@@ -87,7 +87,7 @@ async def test_agent_query_timeout(echo_cmd: list[str], tmp_db: pytest.TempPathF
         max_iterations=10,
         max_seconds=120,
         query_timeout=0.1,  # Very short query timeout.
-        db_path="test_query_timeout.db",
+        db_path=str(tmp_db),
     )
     result = await agent.run("hello")
     assert result.timed_out is True
@@ -107,7 +107,7 @@ async def test_agent_tool_call_execution(
         max_seconds=30,
         query_timeout=10,
         tool_timeout=10,
-        db_path="test_tool_call.db",
+        db_path=str(tmp_db),
     )
     result = await agent.run("test tool call")
     assert result.iterations >= 1

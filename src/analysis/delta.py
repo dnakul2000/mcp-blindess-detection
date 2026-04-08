@@ -10,6 +10,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+import aiosqlite
+
 if TYPE_CHECKING:
     from pathlib import Path
 
@@ -24,18 +26,28 @@ from src.analysis.events import (
 )
 
 # Keywords used to match client log entries against known event types.
+# Require explicit detection markers to avoid counting passive payload echo.
 _CLIENT_LOG_KEYWORDS: dict[str, list[str]] = {
-    "schema_mutation": ["schema", "mutation", "description changed", "hash"],
-    "undeclared_param": ["SHADOW_PARAM", "undeclared", "extra param"],
-    "injection_pattern": [
-        "injection",
-        "IMPORTANT",
-        "SYSTEM NOTE",
-        "you must",
-        "read_file",
-    ],
-    "anomalous_call": ["unexpected tool", "anomalous", "unknown tool"],
+    "schema_mutation": ["[WARNING] schema", "[DETECTION] schema"],
+    "undeclared_param": ["[WARNING] undeclared", "[WARNING] shadow"],
+    "injection_pattern": ["[WARNING] injection", "[DETECTION] injection"],
+    "anomalous_call": ["[WARNING] unexpected tool", "[WARNING] anomalous"],
 }
+
+
+async def _get_declared_tools(db_path: Path) -> set[str]:
+    """Read declared tool names from proxy_tool_schemas.
+
+    Args:
+        db_path: Path to the experiment SQLite database.
+
+    Returns:
+        Set of tool names found in the schema table.
+    """
+    async with aiosqlite.connect(db_path) as db:
+        query = "SELECT DISTINCT tool_name FROM proxy_tool_schemas"
+        async with db.execute(query) as cursor:
+            return {row[0] async for row in cursor if row[0]}
 
 
 @dataclass(frozen=True)
@@ -94,9 +106,12 @@ async def compute_delta(
     schema_events = await detect_schema_mutations(db_path)
     param_events = await detect_undeclared_params(db_path)
     injection_events = await detect_injection_patterns(db_path)
-    # Use an empty expected set so all calls are counted; callers who need
-    # filtered anomalous calls should invoke detect_anomalous_calls directly.
-    anomalous_events = await detect_anomalous_calls(db_path, expected_tools=set())
+    # Derive expected tools from the declared schemas in the database.
+    declared_tools = await _get_declared_tools(db_path)
+    anomalous_events = await detect_anomalous_calls(
+        db_path,
+        expected_tools=declared_tools,
+    )
 
     events_by_type: dict[str, int] = {
         "schema_mutation": len(schema_events),

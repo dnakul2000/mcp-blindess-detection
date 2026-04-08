@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import re
+import statistics
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -217,8 +218,12 @@ def export_summary_json(
         return
 
     total = len(summaries)
-    avg_detection_rate = sum(s.detection_rate for s in summaries) / total
-    avg_delta = sum(s.observability_delta for s in summaries) / total
+    detection_rates = [s.detection_rate for s in summaries]
+    deltas = [float(s.observability_delta) for s in summaries]
+    avg_detection_rate = sum(detection_rates) / total
+    avg_delta = sum(deltas) / total
+    std_detection_rate = statistics.pstdev(detection_rates) if total > 1 else 0.0
+    std_delta = statistics.pstdev(deltas) if total > 1 else 0.0
 
     by_hypothesis: dict[str, int] = {}
     by_provider: dict[str, int] = {}
@@ -232,7 +237,9 @@ def export_summary_json(
     output = {
         "total_experiments": total,
         "average_detection_rate": round(avg_detection_rate, 4),
+        "std_detection_rate": round(std_detection_rate, 4),
         "average_observability_delta": round(avg_delta, 2),
+        "std_observability_delta": round(std_delta, 2),
         "by_hypothesis": by_hypothesis,
         "by_provider": by_provider,
         "by_compliance": by_compliance,

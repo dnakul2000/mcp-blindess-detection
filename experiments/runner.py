@@ -222,6 +222,10 @@ async def run_single(
     )
 
     # Set environment variables for this run.
+    # NOTE: Environment mutations are safe here because experiments run
+    # sequentially (see run_experiment / run_batch). The finally block
+    # restores original values. Do NOT parallelise without refactoring
+    # to use subprocess env dicts.
     original_env: dict[str, str | None] = {}
     for key, value in config.env_vars.items():
         original_env[key] = os.environ.get(key)

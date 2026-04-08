@@ -39,7 +39,7 @@ class ExperimentManager:
         )
         self._experiments[exp_id] = exp
 
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         exp.task = loop.create_task(self._run(exp))
         return exp_id
 
@@ -71,51 +71,56 @@ class ExperimentManager:
 
     async def _run(self, exp: RunningExperiment) -> None:
         """Execute the experiment via the existing runner."""
-        from experiments.runner import ExperimentConfig, run_single
-        from src.gui.config import RESULTS_DIR
+        try:
+            from experiments.runner import ExperimentConfig, run_single
+            from src.gui.config import RESULTS_DIR
 
-        exp.status = "running"
-        config = exp.config
-        exp.log_lines.append(
-            f"Starting experiment {config['experiment_id']}: "
-            f"{config['hypothesis']}/{config['variant']} "
-            f"({config['provider']}/{config['model']})"
-        )
-
-        experiment_config = ExperimentConfig(
-            experiment_id=config["experiment_id"],
-            hypothesis=config["hypothesis"],
-            variant=config["variant"],
-            server_module=config["server_module"],
-            provider=config["provider"],
-            model=config["model"],
-            prompt_file=config["prompt_file"],
-            repetitions=config.get("repetitions", 5),
-            env_vars=config.get("env_vars", {}),
-        )
-
-        RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-
-        for run_num in range(1, experiment_config.repetitions + 1):
+            exp.status = "running"
+            config = exp.config
             exp.log_lines.append(
-                f"Run {run_num}/{experiment_config.repetitions} — "
-                f"{config['provider']}/{config['model']}"
+                f"Starting experiment {config['experiment_id']}: "
+                f"{config['hypothesis']}/{config['variant']} "
+                f"({config['provider']}/{config['model']})"
             )
 
-            try:
-                result = await run_single(experiment_config, run_num, RESULTS_DIR)
-                if result.success:
-                    exp.log_lines.append(f"  -> OK ({result.duration_seconds:.1f}s)")
-                else:
-                    exp.log_lines.append(f"  -> FAILED: {result.error}")
-            except Exception as e:  # noqa: BLE001
-                exp.log_lines.append(f"  -> ERROR: {e}")
-                logger.exception("Run %d failed", run_num)
+            experiment_config = ExperimentConfig(
+                experiment_id=config["experiment_id"],
+                hypothesis=config["hypothesis"],
+                variant=config["variant"],
+                server_module=config["server_module"],
+                provider=config["provider"],
+                model=config["model"],
+                prompt_file=config["prompt_file"],
+                repetitions=config.get("repetitions", 5),
+                env_vars=config.get("env_vars", {}),
+            )
 
-            exp.completed_runs = run_num
+            RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
-        exp.status = "completed"
-        exp.log_lines.append("Experiment complete.")
+            for run_num in range(1, experiment_config.repetitions + 1):
+                exp.log_lines.append(
+                    f"Run {run_num}/{experiment_config.repetitions} — "
+                    f"{config['provider']}/{config['model']}"
+                )
+
+                try:
+                    result = await run_single(experiment_config, run_num, RESULTS_DIR)
+                    if result.success:
+                        exp.log_lines.append(f"  -> OK ({result.duration_seconds:.1f}s)")
+                    else:
+                        exp.log_lines.append(f"  -> FAILED: {result.error}")
+                except Exception as e:  # noqa: BLE001
+                    exp.log_lines.append(f"  -> ERROR: {e}")
+                    logger.exception("Run %d failed", run_num)
+
+                exp.completed_runs = run_num
+
+            exp.status = "completed"
+            exp.log_lines.append("Experiment complete.")
+        except Exception as e:  # noqa: BLE001
+            exp.status = "failed"
+            exp.log_lines.append(f"Experiment failed: {e}")
+            logger.exception("Experiment %s failed", exp.experiment_id)
 
 
 # Module-level singleton

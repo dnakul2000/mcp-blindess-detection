@@ -86,16 +86,24 @@ class ProxyLogger:
             await logger.log_message("client_to_server", parsed_msg)
     """
 
-    def __init__(self, db_path: str | Path) -> None:
+    def __init__(
+        self,
+        db_path: str | Path,
+        commit_every: int = 1,
+    ) -> None:
         """Initialise the proxy logger.
 
         Args:
             db_path: Path to the SQLite database file. Created if it
                 does not exist with 0o600 permissions.
+            commit_every: Number of inserts between automatic commits.
+                Use 1 for immediate commits (e.g. in tests).
         """
         self._db_path = Path(db_path)
         self.session_id: str = str(uuid.uuid4())
         self._db: aiosqlite.Connection | None = None
+        self._commit_every: int = commit_every
+        self._uncommitted: int = 0
 
     async def initialize(self) -> None:
         """Create database tables if they do not exist.
@@ -105,14 +113,22 @@ class ProxyLogger:
         """
         is_new = not self._db_path.exists()
         self._db = await aiosqlite.connect(str(self._db_path))
+        # Set WAL mode and busy_timeout so concurrent writers (proxy
+        # subprocess + agent loop) can coexist.  WAL allows concurrent
+        # reads during writes; busy_timeout retries on SQLITE_BUSY.
+        await self._db.execute("PRAGMA journal_mode=WAL")
+        await self._db.execute("PRAGMA busy_timeout=10000")
         await self._db.executescript(_CREATE_TABLES_SQL)
         await self._db.commit()
         if is_new:
             self._db_path.chmod(0o600)
 
     async def close(self) -> None:
-        """Close the database connection."""
+        """Close the database connection, flushing any uncommitted writes."""
         if self._db is not None:
+            if self._uncommitted > 0:
+                await self._db.commit()
+                self._uncommitted = 0
             await self._db.close()
             self._db = None
 
@@ -136,6 +152,13 @@ class ProxyLogger:
             msg = "ProxyLogger not initialized — call initialize() or use as async context manager"
             raise RuntimeError(msg)
         return self._db
+
+    async def _maybe_commit(self) -> None:
+        """Commit if enough inserts have accumulated since the last commit."""
+        self._uncommitted += 1
+        if self._uncommitted >= self._commit_every:
+            await self._get_db().commit()
+            self._uncommitted = 0
 
     async def log_message(
         self,
@@ -175,7 +198,7 @@ class ProxyLogger:
                 1 if parsed_message.parse_error else 0,
             ),
         )
-        await db.commit()
+        await self._maybe_commit()
 
     async def log_tool_schema(
         self,
@@ -207,7 +230,7 @@ class ProxyLogger:
                 list_call_seq,
             ),
         )
-        await db.commit()
+        await self._maybe_commit()
 
     async def log_adapter_request(
         self,
@@ -239,7 +262,7 @@ class ProxyLogger:
                 request_json,
             ),
         )
-        await db.commit()
+        await self._maybe_commit()
 
     async def log_adapter_response(
         self,
@@ -278,4 +301,4 @@ class ProxyLogger:
                 iteration_number,
             ),
         )
-        await db.commit()
+        await self._maybe_commit()

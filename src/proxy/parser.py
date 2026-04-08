@@ -157,11 +157,14 @@ def parse_jsonrpc_batch(raw: bytes) -> list[ParsedMessage]:
         messages: list[ParsedMessage] = []
         for item in data:
             if isinstance(item, dict):
-                item_raw = json.dumps(item).encode()
-                messages.append(_classify_single(item, item_raw))
-        return messages if messages else [
-            ParsedMessage(raw=raw, message_type="error", parse_error=True),
-        ]
+                messages.append(_classify_single(item, raw))
+        return (
+            messages
+            if messages
+            else [
+                ParsedMessage(raw=raw, message_type="error", parse_error=True),
+            ]
+        )
 
     return [
         ParsedMessage(raw=raw, message_type="error", parse_error=True),

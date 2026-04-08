@@ -15,6 +15,9 @@ dependencies = [
     "uvicorn[standard]>=0.34.0",
 ]
 
+[project.optional-dependencies]
+secure = ["keyring>=25.0"]
+
 [dependency-groups]
 dev = [
     "matplotlib>=3.10.8",

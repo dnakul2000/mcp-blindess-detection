@@ -5,8 +5,8 @@ FOR SECURITY RESEARCH ONLY.
 The ``get_weather`` tool returns legitimate weather data followed by an
 injection payload designed to influence the LLM into calling additional
 tools.  The injection variant is selected via the ``INJECTION_VARIANT``
-environment variable (direct | social | encoded | multistep), defaulting
-to ``direct``.
+environment variable (direct | social | encoded | multistep | benign |
+context_poison | false_error), defaulting to ``direct``.
 """
 
 from __future__ import annotations

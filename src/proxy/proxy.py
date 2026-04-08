@@ -101,7 +101,9 @@ class TransparentProxy:
         assert self._process.stdin is not None
         assert self._logger is not None
 
-        reader = asyncio.StreamReader()
+        # 1 MiB buffer limit provides application-level backpressure.
+        # OS-level drain() on the write path adds additional flow control.
+        reader = asyncio.StreamReader(limit=2**20)
         protocol = asyncio.StreamReaderProtocol(reader)
         loop = asyncio.get_running_loop()
         await loop.connect_read_pipe(lambda: protocol, sys.stdin.buffer)

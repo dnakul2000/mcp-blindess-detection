@@ -258,19 +258,19 @@ async def test_delta_with_client_log(db_path: Path) -> None:
     await _insert_injection_response(db_path)
     await _insert_anomalous_call(db_path)
 
-    # Client log with one line that matches injection keywords.
+    # Client log with explicit detection markers (required by updated keywords).
     client_log = [
         "INFO: Tool call completed normally",
-        "WARNING: injection pattern detected in response",
+        "[WARNING] injection pattern detected in response",
     ]
 
     result = await compute_delta(db_path, client_log=client_log)
 
     assert result.total_proxy_events > 0
-    assert result.total_client_events == 1  # Only the WARNING line matches.
+    assert result.total_client_events == 1  # Only the [WARNING] line matches.
     assert result.observability_delta == result.total_proxy_events - 1
-    # The "WARNING" keyword makes events UI_VISIBLE (takes precedence over log-visible).
-    assert result.events_by_visibility["ui_visible"] >= 1
+    # The [WARNING] line matches log-visible keywords.
+    assert result.events_by_visibility["log_visible"] >= 1
 
 
 async def test_detection_rate_calculation(db_path: Path) -> None:
@@ -313,7 +313,7 @@ async def test_detection_rate_calculation(db_path: Path) -> None:
 
     # Client log that matches 1 out of 4 events.
     client_log = [
-        "WARNING: injection pattern detected in response",
+        "[WARNING] injection pattern detected in response",
     ]
 
     result = await compute_delta(db_path, client_log=client_log)

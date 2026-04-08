@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
 import platform
 from typing import Any
@@ -11,6 +12,8 @@ from typing import Any
 from cryptography.fernet import Fernet
 
 from src.gui.config import KEY_STORE_DIR, KEY_STORE_PATH
+
+_logger = logging.getLogger(__name__)
 
 _PROVIDER_ENV_MAP: dict[str, str] = {
     "anthropic": "ANTHROPIC_API_KEY",
@@ -21,11 +24,33 @@ _PROVIDER_ENV_MAP: dict[str, str] = {
 
 
 def _derive_key() -> bytes:
-    """Derive a Fernet key from machine-stable identifiers."""
-    seed = f"{platform.node()}-{os.getlogin()}-mcp-blindness"
-    raw = hashlib.sha256(seed.encode()).digest()
+    """Derive a Fernet key, preferring OS keyring when available.
+
+    Falls back to deterministic derivation from machine identifiers
+    if the ``keyring`` package is not installed or the OS keyring is
+    unavailable.
+    """
+    try:
+        import importlib
+
+        _keyring = importlib.import_module("keyring")
+        stored: str | None = _keyring.get_password("mcp-blindness", "fernet-key")
+        if stored:
+            return stored.encode()
+        # Generate and store a new random key.
+        key = Fernet.generate_key()
+        _keyring.set_password("mcp-blindness", "fernet-key", key.decode())
+        return key
+    except Exception:  # noqa: BLE001
+        _logger.warning(
+            "OS keyring unavailable; using deterministic key derivation. "
+            "Install 'keyring' package for improved key storage security.",
+        )
+    # Fallback: deterministic derivation (original behaviour).
     import base64
 
+    seed = f"{platform.node()}-{os.getlogin()}-mcp-blindness"
+    raw = hashlib.sha256(seed.encode()).digest()
     return base64.urlsafe_b64encode(raw)
 
 
@@ -60,7 +85,9 @@ def save_key(provider: str, api_key: str) -> None:
     store = _load_store()
     store[provider] = api_key
     _save_store(store)
-    # Also set in environment for immediate use
+    # Also set in environment for immediate use.
+    # NOTE: This mutates the current process env. Acceptable for the
+    # GUI's single-experiment-at-a-time model.
     env_var = _PROVIDER_ENV_MAP.get(provider)
     if env_var:
         os.environ[env_var] = api_key
@@ -127,7 +154,11 @@ async def verify_key(provider: str) -> str:
                         "anthropic-version": "2023-06-01",
                         "content-type": "application/json",
                     },
-                    json={"model": "claude-haiku-4-5-20251001", "max_tokens": 1, "messages": [{"role": "user", "content": "hi"}]},
+                    json={
+                        "model": "claude-haiku-4-5-20251001",
+                        "max_tokens": 1,
+                        "messages": [{"role": "user", "content": "hi"}],
+                    },
                 )
                 if resp.status_code in (200, 400):  # 400 = valid key, bad request is ok
                     return f"Anthropic key verified (HTTP {resp.status_code})."

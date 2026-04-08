@@ -354,3 +354,67 @@ async def test_verify_key_generic_exception() -> None:
         mock_cls.return_value = mock_client
         result = await verify_key("anthropic")
     assert "Verification error" in result
+
+
+# ---------------------------------------------------------------------------
+# _derive_key keyring integration
+# ---------------------------------------------------------------------------
+
+
+def test_derive_key_keyring_stored() -> None:
+    """_derive_key returns key from keyring when stored key exists."""
+    import types
+
+    fake_keyring = types.ModuleType("keyring")
+    fake_keyring.get_password = lambda _svc, _user: "stored-fernet-key-value"  # type: ignore[attr-defined]
+
+    with patch("importlib.import_module", return_value=fake_keyring):
+        # Call the real _derive_key (not the fixture-patched version).
+        from src.gui.services import key_service
+
+        # Access the original function from the module.
+        original = key_service.__dict__["_derive_key"]
+        # But the autouse fixture patches it; re-import to get original.
+        import importlib
+
+        importlib.reload(key_service)
+        result = key_service._derive_key()
+        assert result == b"stored-fernet-key-value"
+        # Reload again to restore for subsequent tests.
+        importlib.reload(key_service)
+
+
+def test_derive_key_keyring_not_stored() -> None:
+    """_derive_key generates and stores a new key when keyring has none."""
+    import types
+
+    fake_keyring = types.ModuleType("keyring")
+    fake_keyring.get_password = lambda _svc, _user: None  # type: ignore[attr-defined]
+    stored: dict[str, str] = {}
+    fake_keyring.set_password = lambda _svc, _user, pw: stored.update({"key": pw})  # type: ignore[attr-defined]
+
+    with patch("importlib.import_module", return_value=fake_keyring):
+        from src.gui.services import key_service
+
+        import importlib
+
+        importlib.reload(key_service)
+        result = key_service._derive_key()
+        assert isinstance(result, bytes)
+        assert len(result) == 44  # Fernet key length
+        assert "key" in stored
+        importlib.reload(key_service)
+
+
+def test_derive_key_keyring_import_fails() -> None:
+    """_derive_key falls back to deterministic derivation when import fails."""
+    with patch("importlib.import_module", side_effect=ImportError("no keyring")):
+        from src.gui.services import key_service
+
+        import importlib
+
+        importlib.reload(key_service)
+        result = key_service._derive_key()
+        assert isinstance(result, bytes)
+        assert len(result) == 44
+        importlib.reload(key_service)

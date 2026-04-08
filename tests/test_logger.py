@@ -179,3 +179,51 @@ async def test_timestamp_format(tmp_db: Path) -> None:
 
     assert len(rows) == 1
     assert _ISO8601_RE.match(rows[0][0]), f"Timestamp does not match ISO 8601: {rows[0][0]}"
+
+
+async def test_batched_commit_on_close(tmp_db: Path) -> None:
+    """Uncommitted writes are flushed when close() is called with commit_every > 1."""
+    msg = ParsedMessage(
+        raw=b'{"jsonrpc":"2.0","id":1,"method":"tools/list"}',
+        message_type="request",
+        method="tools/list",
+        msg_id=1,
+        parsed={"jsonrpc": "2.0", "id": 1, "method": "tools/list"},
+        parse_error=False,
+    )
+    # Use commit_every=100 so the single insert is not auto-committed.
+    async with ProxyLogger(tmp_db, commit_every=100) as logger:
+        await logger.log_message("client_to_server", msg)
+        # At this point _uncommitted == 1, not yet committed.
+
+    # After context manager exit (close()), the row should be committed.
+    async with aiosqlite.connect(str(tmp_db)) as db:
+        cursor = await db.execute("SELECT COUNT(*) FROM proxy_messages")
+        row = await cursor.fetchone()
+        assert row is not None
+        assert row[0] == 1
+
+
+async def test_maybe_commit_triggers_at_threshold(tmp_db: Path) -> None:
+    """_maybe_commit commits exactly when _uncommitted reaches commit_every."""
+    # Use commit_every=2 so the second insert triggers a commit.
+    logger = ProxyLogger(tmp_db, commit_every=2)
+    await logger.initialize()
+
+    msg = ParsedMessage(
+        raw=b'{"jsonrpc":"2.0","id":1,"method":"test"}',
+        message_type="request",
+        method="test",
+        msg_id=1,
+        parsed={"jsonrpc": "2.0", "id": 1, "method": "test"},
+        parse_error=False,
+    )
+    await logger.log_message("client_to_server", msg)
+    # First insert: _uncommitted=1, no commit yet.
+    assert logger._uncommitted == 1  # noqa: SLF001
+
+    await logger.log_message("client_to_server", msg)
+    # Second insert: _uncommitted reached 2, committed and reset.
+    assert logger._uncommitted == 0  # noqa: SLF001
+
+    await logger.close()

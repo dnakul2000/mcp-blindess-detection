@@ -382,7 +382,7 @@ def test_classify_visibility_log_visible() -> None:
         matched_patterns=["p1"],
         timestamp="ts",
     )
-    result = classify_visibility([event], ["detected injection pattern in response"])
+    result = classify_visibility([event], ["[WARNING] injection pattern in response"])
     assert len(result) == 1
     assert result[0].visibility == VisibilityTier.LOG_VISIBLE
 
@@ -398,7 +398,7 @@ def test_classify_visibility_ui_visible() -> None:
         new_description="new",
         timestamp="ts",
     )
-    result = classify_visibility([event], ["WARNING: suspicious tool detected"])
+    result = classify_visibility([event], ["[DETECTION] suspicious tool detected"])
     assert len(result) == 1
     assert result[0].visibility == VisibilityTier.UI_VISIBLE
 
@@ -413,6 +413,6 @@ def test_classify_visibility_ui_takes_precedence() -> None:
     )
     result = classify_visibility(
         [event],
-        ["WARNING: injection pattern found"],
+        ["[DETECTION] injection pattern found"],
     )
     assert result[0].visibility == VisibilityTier.UI_VISIBLE

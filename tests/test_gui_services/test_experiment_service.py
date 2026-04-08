@@ -153,3 +153,24 @@ async def test_run_exception(tmp_path: Path) -> None:
     state = mgr.get("exc_exp")
     assert state is not None
     assert any("ERROR" in line for line in state["log_lines"])
+
+
+async def test_run_setup_failure(tmp_path: Path) -> None:
+    """Experiment status becomes 'failed' when setup raises before the run loop."""
+    mgr = ExperimentManager()
+    # Missing required keys triggers a KeyError during ExperimentConfig construction.
+    config: dict[str, object] = {
+        "experiment_id": "setup_fail",
+        "hypothesis": "H3",
+        # Missing: variant, server_module, provider, model, prompt_file
+        "repetitions": 1,
+    }
+
+    with patch("src.gui.config.RESULTS_DIR", tmp_path):
+        mgr.launch(config)
+        await asyncio.sleep(0.2)
+
+    state = mgr.get("setup_fail")
+    assert state is not None
+    assert state["status"] == "failed"
+    assert any("failed" in line.lower() for line in state["log_lines"])
