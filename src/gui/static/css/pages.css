@@ -1,0 +1,47 @@
+/* Page-specific overrides */
+
+/* Dashboard */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 3fr 2fr;
+  gap: var(--sp-6);
+}
+
+/* Analysis page */
+.analysis-section {
+  margin-bottom: var(--sp-8);
+}
+
+.analysis-section-title {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: var(--sp-4);
+  color: var(--text-0);
+}
+
+/* Results list */
+.results-table tr {
+  cursor: pointer;
+}
+
+.results-table tr:hover td {
+  background: var(--accent-bg);
+}
+
+/* Experiment form sections */
+.form-section {
+  margin-bottom: var(--sp-6);
+  padding-bottom: var(--sp-6);
+  border-bottom: 1px solid var(--border-0);
+}
+
+.form-section:last-child {
+  border-bottom: none;
+}
+
+.form-section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-0);
+  margin-bottom: var(--sp-4);
+}

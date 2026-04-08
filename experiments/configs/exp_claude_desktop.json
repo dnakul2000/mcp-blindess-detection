@@ -1,0 +1,10 @@
+{
+  "hypothesis": "H3",
+  "variant": "direct_injection",
+  "server_module": "src.servers.response_injection",
+  "provider": "anthropic",
+  "model": "claude-sonnet-4-20250514",
+  "prompt_file": "experiments/prompts/weather_query.txt",
+  "repetitions": 1,
+  "env_vars": {"INJECTION_VARIANT": "direct"}
+}

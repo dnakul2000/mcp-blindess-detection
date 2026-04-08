@@ -30,7 +30,7 @@ def test_load_configs_from_json() -> None:
     assert cfg.variant == "direct_injection"
     assert cfg.server_module == "src.servers.response_injection"
     assert cfg.provider == "ollama"
-    assert cfg.model == "llama3.2"
+    assert cfg.model == "qwen3.5:4b"
     assert cfg.repetitions == 5
 
 

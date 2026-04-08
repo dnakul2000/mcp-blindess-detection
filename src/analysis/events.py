@@ -8,13 +8,23 @@ from __future__ import annotations
 
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+from enum import Enum
 from typing import TYPE_CHECKING
 
 import aiosqlite
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+
+class VisibilityTier(Enum):
+    """Classification of how a security event is surfaced to the operator."""
+
+    UI_VISIBLE = "ui_visible"
+    LOG_VISIBLE = "log_visible"
+    ABSENT = "absent"
+
 
 # Patterns that suggest injected instructions in tool responses.
 _INJECTION_PATTERNS: list[str] = [
@@ -24,6 +34,8 @@ _INJECTION_PATTERNS: list[str] = [
     r"\bIMPORTANT\b",
     r"\bSYSTEM NOTE\b",
     r"\bverification\b",
+    r"\bsession expired\b",
+    r"\bre-authenticate\b",
 ]
 
 # Base64-like string: length > 20, alphanumeric plus / + =.
@@ -41,6 +53,7 @@ class SchemaEvent:
     old_description: str
     new_description: str
     timestamp: str
+    visibility: VisibilityTier = VisibilityTier.ABSENT
 
 
 @dataclass(frozen=True)
@@ -53,6 +66,7 @@ class ParamEvent:
     actual_params: list[str]
     undeclared_params: list[str]
     timestamp: str
+    visibility: VisibilityTier = VisibilityTier.ABSENT
 
 
 @dataclass(frozen=True)
@@ -63,6 +77,7 @@ class InjectionEvent:
     response_text: str
     matched_patterns: list[str]
     timestamp: str
+    visibility: VisibilityTier = VisibilityTier.ABSENT
 
 
 @dataclass(frozen=True)
@@ -73,6 +88,11 @@ class AnomalousCallEvent:
     tool_name: str
     arguments: dict[str, object]
     timestamp: str
+    visibility: VisibilityTier = VisibilityTier.ABSENT
+
+
+# Type alias for any security event.
+SecurityEvent = SchemaEvent | ParamEvent | InjectionEvent | AnomalousCallEvent
 
 
 async def detect_schema_mutations(db_path: Path) -> list[SchemaEvent]:
@@ -312,3 +332,73 @@ async def detect_anomalous_calls(
                         ),
                     )
     return events
+
+
+# Keywords indicating the client surfaced an event in the UI.
+_UI_VISIBLE_KEYWORDS: list[str] = [
+    "WARNING",
+    "BLOCKED",
+    "DENIED",
+    "user notification",
+    "UI alert",
+]
+
+# Keywords indicating the client logged an event (not shown in UI).
+_LOG_VISIBLE_KEYWORDS: dict[str, list[str]] = {
+    "schema_mutation": ["schema", "mutation", "description changed", "hash"],
+    "undeclared_param": ["SHADOW_PARAM", "undeclared", "extra param"],
+    "injection_pattern": ["injection", "IMPORTANT", "SYSTEM NOTE", "you must", "read_file"],
+    "anomalous_call": ["unexpected tool", "anomalous", "unknown tool"],
+}
+
+
+def _event_type_key(event: SecurityEvent) -> str:
+    """Return the event-type key for log-visible keyword lookup."""
+    if isinstance(event, SchemaEvent):
+        return "schema_mutation"
+    if isinstance(event, ParamEvent):
+        return "undeclared_param"
+    if isinstance(event, InjectionEvent):
+        return "injection_pattern"
+    return "anomalous_call"
+
+
+def classify_visibility(
+    events: list[SecurityEvent],
+    client_log: list[str],
+) -> list[SecurityEvent]:
+    """Classify each event's visibility tier based on client log content.
+
+    For each event, checks whether any client log line indicates the event
+    was surfaced in the UI (UI_VISIBLE), merely logged (LOG_VISIBLE), or
+    not captured at all (ABSENT).
+
+    Args:
+        events: List of security events to classify.
+        client_log: Client log lines to check against.
+
+    Returns:
+        New list of events with updated visibility fields.
+    """
+    lowered_lines = [line.lower() for line in client_log]
+
+    classified: list[SecurityEvent] = []
+    for event in events:
+        # Check UI-visible first (takes precedence).
+        ui_match = any(kw.lower() in line for line in lowered_lines for kw in _UI_VISIBLE_KEYWORDS)
+        if ui_match:
+            classified.append(replace(event, visibility=VisibilityTier.UI_VISIBLE))
+            continue
+
+        # Check log-visible.
+        type_key = _event_type_key(event)
+        log_keywords = _LOG_VISIBLE_KEYWORDS.get(type_key, [])
+        log_match = any(kw.lower() in line for line in lowered_lines for kw in log_keywords)
+        if log_match:
+            classified.append(replace(event, visibility=VisibilityTier.LOG_VISIBLE))
+            continue
+
+        # Default: absent.
+        classified.append(event)
+
+    return classified

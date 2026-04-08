@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Analysis — MCP Detection Blindness{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-title">Analysis</div>
+  <div class="page-subtitle">Cross-experiment compliance and observability analysis</div>
+</div>
+
+<div class="page-body">
+  <!-- Compliance Heatmap -->
+  <div class="analysis-section">
+    <div class="analysis-section-title">Compliance Heatmap (Model x Variant)</div>
+    {% if heatmap.models %}
+    <div class="card" style="overflow-x: auto;">
+      <table class="heatmap-table">
+        <thead>
+          <tr>
+            <th></th>
+            {% for variant in heatmap.variants %}
+            <th>{{ variant | replace("_", " ") | title }}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for model in heatmap.models %}
+          <tr>
+            <th style="text-align: right; font-family: var(--font-mono); font-size: 12px; white-space: nowrap;">
+              {{ model }}
+            </th>
+            {% for variant in heatmap.variants %}
+            {% set level = heatmap.cells[model][variant] %}
+            <td class="heatmap-cell {{ 'no-data' if level == 'no_data' else '' }}" data-compliance="{{ level }}">
+              {{ level | replace("_", " ") | title if level != 'no_data' else '—' }}
+            </td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="card">
+      <div class="empty-state">
+        <div class="empty-state-title">No data for heatmap</div>
+        <p class="text-muted text-sm">Run experiments across multiple models and variants to populate this view.</p>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Detection Rate -->
+  <div class="analysis-section">
+    <div class="analysis-section-title">Detection Rate by Provider</div>
+    <div class="card">
+      <div class="chart-container">
+        <canvas data-chart='{{ detection_chart_config }}'></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Observability Delta -->
+  <div class="analysis-section">
+    <div class="analysis-section-title">Observability Delta</div>
+    <div class="card">
+      <div class="chart-container">
+        <canvas data-chart='{{ delta_chart_config }}'></canvas>
+      </div>
+      <p class="text-xs text-muted mt-2">
+        The observability delta measures the gap between what the transparent proxy captures (ground truth)
+        and what production MCP clients expose to operators. A larger delta indicates more security-relevant
+        events invisible to the operator.
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}

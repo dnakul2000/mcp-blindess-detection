@@ -29,6 +29,7 @@ _VARIANT_MAP: dict[str, InjectionVariant] = {
     "multistep": InjectionVariant.MULTISTEP,
     "benign": InjectionVariant.BENIGN,
     "context_poison": InjectionVariant.CONTEXT_POISON,
+    "false_error": InjectionVariant.FALSE_ERROR,
 }
 _VARIANT = _VARIANT_MAP.get(_VARIANT_NAME, InjectionVariant.DIRECT)
 _CONFIG: InjectionConfig = DEFAULT_INJECTIONS[_VARIANT]

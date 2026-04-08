@@ -1,0 +1,57 @@
+<!-- HTMX partial: tool schemas -->
+{% if schemas %}
+<div class="card">
+  <div class="card-header">Discovered Tools ({{ schemas | length }} schema records)</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Tool Name</th>
+        <th>Description</th>
+        <th>Desc Hash</th>
+        <th>Schema Hash</th>
+        <th>Seq #</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in schemas %}
+      <tr>
+        <td class="text-mono font-medium">{{ s.tool_name }}</td>
+        <td class="text-sm">{{ s.description[:100] }}{% if s.description|length > 100 %}...{% endif %}</td>
+        <td class="text-mono text-xs text-muted">{{ s.description_hash[:12] if s.description_hash else '—' }}</td>
+        <td class="text-mono text-xs text-muted">{{ s.input_schema_hash[:12] if s.input_schema_hash else '—' }}</td>
+        <td class="text-mono text-center">{{ s.list_call_sequence_number }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% set tools = {} %}
+{% for s in schemas %}
+  {% if s.tool_name in tools %}
+    {% if tools[s.tool_name].description_hash != s.description_hash %}
+    <div class="card mt-4">
+      <div class="card-header" style="color: var(--event-schema);">Schema Mutation Detected: {{ s.tool_name }}</div>
+      <div class="schema-diff">
+        <div class="schema-old">
+          <div class="text-xs font-medium mb-2" style="color: var(--compliance-critical);">Previous (seq {{ tools[s.tool_name].list_call_sequence_number }})</div>
+          <pre class="text-xs">{{ tools[s.tool_name].description }}</pre>
+          <div class="text-xs text-muted mt-2">Hash: {{ tools[s.tool_name].description_hash[:16] }}</div>
+        </div>
+        <div class="schema-new">
+          <div class="text-xs font-medium mb-2" style="color: var(--compliance-safe);">Current (seq {{ s.list_call_sequence_number }})</div>
+          <pre class="text-xs">{{ s.description }}</pre>
+          <div class="text-xs text-muted mt-2">Hash: {{ s.description_hash[:16] }}</div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  {% endif %}
+{% endfor %}
+
+{% else %}
+<div class="empty-state">
+  <div class="empty-state-title">No tool schemas recorded</div>
+  <p class="text-muted text-sm">The proxy did not capture any tools/list responses for this run.</p>
+</div>
+{% endif %}

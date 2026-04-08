@@ -3,7 +3,7 @@
   "variant": "encoded",
   "server_module": "src.servers.response_injection",
   "provider": "ollama",
-  "model": "llama3.2",
+  "model": "qwen3.5:4b",
   "prompt_file": "experiments/prompts/weather_query.txt",
   "repetitions": 5,
   "env_vars": {"INJECTION_VARIANT": "encoded"}

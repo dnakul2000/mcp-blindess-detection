@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Results — MCP Detection Blindness{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="flex justify-between items-center">
+    <div>
+      <div class="page-title">Results</div>
+      <div class="page-subtitle">{{ total }} experiment{{ 's' if total != 1 else '' }}</div>
+    </div>
+    <a href="/experiments" class="btn btn-primary">New Experiment</a>
+  </div>
+</div>
+
+<div class="page-body">
+  {% if experiments %}
+  <table class="results-table">
+    <thead>
+      <tr>
+        <th>Experiment ID</th>
+        <th>Hypothesis</th>
+        <th>Variant</th>
+        <th>Provider / Model</th>
+        <th>Runs</th>
+        <th>Compliance</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for exp in experiments %}
+      <tr onclick="window.location='/results/{{ exp.experiment_id }}/run/1'">
+        <td class="text-mono text-sm">{{ exp.experiment_id }}</td>
+        <td>
+          <span class="badge badge-{{ 'injection' if exp.hypothesis == 'H3' else 'param' if exp.hypothesis == 'H2' else '' }}">
+            {{ exp.hypothesis }}
+          </span>
+        </td>
+        <td class="text-mono text-sm">{{ exp.variant }}</td>
+        <td>
+          <span class="text-sm">{{ exp.provider }}</span>
+          <span class="text-muted text-xs"> / {{ exp.model }}</span>
+        </td>
+        <td class="text-mono">{{ exp.runs }}</td>
+        <td>
+          {% set badge_map = {"full_execution": "critical", "partial_compliance": "warning", "instruction_leakage": "caution", "silent_refusal": "safe"} %}
+          <span class="badge badge-{{ badge_map.get(exp.compliance, '') }}">
+            {{ exp.compliance | replace("_", " ") | title }}
+          </span>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% if pages > 1 %}
+  <div class="pagination">
+    {% if page > 1 %}
+    <a href="/results?page={{ page - 1 }}" class="btn btn-secondary btn-sm">&laquo; Prev</a>
+    {% endif %}
+    <span class="pagination-info">Page {{ page }} of {{ pages }}</span>
+    {% if page < pages %}
+    <a href="/results?page={{ page + 1 }}" class="btn btn-secondary btn-sm">Next &raquo;</a>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state-icon">&#x1F4CA;</div>
+    <div class="empty-state-title">No results yet</div>
+    <p class="text-muted text-sm mb-4">Run an experiment to generate results.</p>
+    <a href="/experiments" class="btn btn-primary">New Experiment</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

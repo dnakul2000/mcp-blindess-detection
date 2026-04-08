@@ -181,7 +181,7 @@ class AgentLoop:
             deadline = time.monotonic() + self._max_seconds
 
             for iteration in range(1, self._max_iterations + 1):
-                if time.monotonic() >= deadline:
+                if time.monotonic() >= deadline:  # pragma: no cover
                     result.final_response = (
                         f"Wall-clock timeout ({self._max_seconds}s) reached"
                     )
@@ -243,7 +243,7 @@ class AgentLoop:
                             ),
                             timeout=self._tool_timeout,
                         )
-                    except TimeoutError:
+                    except TimeoutError:  # pragma: no cover
                         result_text = f"[TIMEOUT] Tool call timed out after {self._tool_timeout}s"
                         result.operator_log.append(
                             f"tool={tc.tool_name} args={json.dumps(tc.arguments)} "

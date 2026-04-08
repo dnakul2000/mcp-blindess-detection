@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — MCP Detection Blindness{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-title">Dashboard</div>
+  <div class="page-subtitle">Aggregate experiment results and compliance overview</div>
+</div>
+
+<div class="page-body">
+  <!-- Stats cards with auto-refresh -->
+  <div hx-get="/htmx/stats" hx-trigger="every 30s" hx-swap="outerHTML">
+    {% include "components/stats_card.html" %}
+  </div>
+
+  {% if stats.total > 0 %}
+  <div class="dashboard-grid">
+    <!-- Left: Recent experiments table -->
+    <div class="card">
+      <div class="card-header">Recent Experiments</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Hypothesis</th>
+            <th>Variant</th>
+            <th>Provider / Model</th>
+            <th>Runs</th>
+            <th>Compliance</th>
+            <th>Detection</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for exp in stats.recent %}
+          <tr onclick="window.location='/results/{{ exp.experiment_id }}/run/1'" style="cursor:pointer;">
+            <td><span class="badge badge-{{ 'injection' if exp.hypothesis == 'H3' else 'param' if exp.hypothesis == 'H2' else '' }}">{{ exp.hypothesis }}</span></td>
+            <td class="text-mono text-sm">{{ exp.variant }}</td>
+            <td>
+              <span class="text-sm">{{ exp.provider }}</span>
+              <span class="text-muted text-xs"> / {{ exp.model }}</span>
+            </td>
+            <td class="text-mono text-sm">{{ exp.runs }}</td>
+            <td>
+              {% set badge_map = {"full_execution": "critical", "partial_compliance": "warning", "instruction_leakage": "caution", "silent_refusal": "safe"} %}
+              <span class="badge badge-{{ badge_map.get(exp.compliance, '') }}">{{ exp.compliance | replace("_", " ") | title }}</span>
+            </td>
+            <td class="text-mono text-sm">{{ (exp.detection_rate * 100) | round(1) }}%</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% if stats.recent | length == 0 %}
+      <div class="empty-state">
+        <div class="empty-state-title">No experiments yet</div>
+        <p class="text-muted text-sm">Run your first experiment to see results here.</p>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Right: Charts -->
+    <div class="flex flex-col gap-4">
+      <div class="card">
+        <div class="card-header">Compliance Distribution</div>
+        <div class="chart-container">
+          <canvas data-chart='{{ chart_config }}'></canvas>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">Detection Overview</div>
+        <div style="padding: var(--sp-2) 0;">
+          <div class="flex justify-between items-center mb-2">
+            <span class="text-sm text-secondary">Avg Detection Rate</span>
+            <span class="text-mono font-semibold">{{ (stats.avg_detection_rate * 100) | round(1) }}%</span>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill" style="width: {{ (stats.avg_detection_rate * 100) | round(1) }}%"></div>
+          </div>
+          <p class="text-xs text-muted mt-2">
+            Average observability delta: <strong>{{ stats.avg_delta }}</strong> events missed by clients
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state-icon">&#x1F50D;</div>
+    <div class="empty-state-title">No experiments yet</div>
+    <p class="text-muted text-sm mb-4">Get started by configuring and running your first experiment.</p>
+    <a href="/experiments" class="btn btn-primary">New Experiment</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

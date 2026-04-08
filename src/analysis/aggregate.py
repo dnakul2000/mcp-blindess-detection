@@ -7,13 +7,15 @@ classification on each, and produces summary exports in CSV and JSON.
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import asdict, dataclass
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import aiosqlite
 
 if TYPE_CHECKING:
-    from pathlib import Path
+    pass
 import pandas as pd
 
 from src.analysis.compliance import classify_compliance
@@ -25,6 +27,7 @@ class ExperimentSummary:
     """Aggregated summary for a single experiment run."""
 
     experiment_id: str
+    run_number: int
     hypothesis: str
     variant: str
     provider: str
@@ -34,10 +37,39 @@ class ExperimentSummary:
     observability_delta: int
 
 
-async def _extract_metadata(
+def _extract_metadata_from_config(
     db_path: Path,
 ) -> tuple[str, str, str, str]:
-    """Extract experiment metadata from adapter_requests.
+    """Extract experiment metadata from config.json alongside the database.
+
+    Args:
+        db_path: Path to an experiment SQLite database.
+
+    Returns:
+        Tuple of (hypothesis, variant, provider, model).
+    """
+    config_path = db_path.parent / "config.json"
+    if config_path.exists():
+        try:
+            config = json.loads(config_path.read_text(encoding="utf-8"))
+            return (
+                config.get("hypothesis", "unknown"),
+                config.get("variant", "unknown"),
+                config.get("provider", "unknown"),
+                config.get("model", "unknown"),
+            )
+        except (json.JSONDecodeError, OSError):
+            pass
+    return "unknown", "unknown", "unknown", "unknown"
+
+
+async def _extract_metadata_from_db(
+    db_path: Path,
+) -> tuple[str, str, str, str]:
+    """Fallback: extract metadata from database tables.
+
+    Reads provider/model from adapter_requests and infers hypothesis/variant
+    from tool schemas. Used only when config.json is unavailable.
 
     Args:
         db_path: Path to an experiment SQLite database.
@@ -53,7 +85,6 @@ async def _extract_metadata(
     async with aiosqlite.connect(db_path) as db:
         db.row_factory = aiosqlite.Row
 
-        # Get provider and model from the first adapter_requests row.
         query = "SELECT provider, model FROM adapter_requests LIMIT 1"
         async with db.execute(query) as cursor:
             row = await cursor.fetchone()
@@ -61,7 +92,6 @@ async def _extract_metadata(
                 provider = row["provider"] or "unknown"
                 model = row["model"] or "unknown"
 
-        # Infer hypothesis and variant from proxy_messages tool names.
         tool_query = "SELECT DISTINCT tool_name FROM proxy_tool_schemas"
         async with db.execute(tool_query) as cursor:
             tool_names: list[str] = [r["tool_name"] async for r in cursor if r["tool_name"]]
@@ -77,6 +107,19 @@ async def _extract_metadata(
                 break
 
     return hypothesis, variant, provider, model
+
+
+def _extract_run_number(db_path: Path) -> int:
+    """Extract the run number from the directory name (e.g. run_3 -> 3).
+
+    Args:
+        db_path: Path to an experiment SQLite database.
+
+    Returns:
+        Run number (1-based), or 0 if not parseable.
+    """
+    match = re.search(r"run_(\d+)", db_path.parent.name)
+    return int(match.group(1)) if match else 0
 
 
 async def aggregate_results(results_dir: Path) -> list[ExperimentSummary]:
@@ -96,9 +139,15 @@ async def aggregate_results(results_dir: Path) -> list[ExperimentSummary]:
     db_files = sorted(results_dir.rglob("experiment.db"))
 
     for db_path in db_files:
-        experiment_id = db_path.parent.name or db_path.stem
+        # experiment.db lives at results/<experiment_id>/run_<N>/experiment.db
+        run_number = _extract_run_number(db_path)
+        experiment_id = db_path.parent.parent.name if run_number else db_path.parent.name
 
-        hypothesis, variant, provider, model = await _extract_metadata(db_path)
+        # Primary: config.json (always written by runner). Fallback: DB tables.
+        hypothesis, variant, provider, model = _extract_metadata_from_config(db_path)
+        if all(v == "unknown" for v in (hypothesis, variant, provider, model)):
+            hypothesis, variant, provider, model = await _extract_metadata_from_db(db_path)
+
         compliance_results = await classify_compliance(db_path)
         delta_result = await compute_delta(db_path)
 
@@ -121,6 +170,7 @@ async def aggregate_results(results_dir: Path) -> list[ExperimentSummary]:
         summaries.append(
             ExperimentSummary(
                 experiment_id=experiment_id,
+                run_number=run_number,
                 hypothesis=hypothesis,
                 variant=variant,
                 provider=provider,

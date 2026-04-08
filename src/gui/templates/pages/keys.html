@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}API Keys — MCP Detection Blindness{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-title">API Keys</div>
+  <div class="page-subtitle">Manage LLM provider credentials</div>
+</div>
+
+<div class="page-body">
+  {% if message %}
+  <div class="card mb-4" style="border-color: var(--accent); background: var(--accent-bg);">
+    <span class="text-sm">{{ message }}</span>
+  </div>
+  {% endif %}
+
+  <div class="provider-grid">
+    {% for provider in providers %}
+    {% set status = key_status.get(provider.id, {}) %}
+    <div class="provider-card">
+      <div class="provider-header">
+        <div class="provider-dot" style="background: {{ provider.color }};"></div>
+        <div class="provider-name">{{ provider.name }}</div>
+        <div class="provider-status {{ 'configured' if status.configured else 'missing' }}">
+          {% if status.configured %}
+          <span class="key-dot ok"></span> Configured
+          {% else %}
+          <span class="key-dot missing"></span> Not set
+          {% endif %}
+        </div>
+      </div>
+
+      {% if status.configured and status.masked %}
+      <div class="key-display">{{ status.masked }}</div>
+      {% endif %}
+
+      {% if provider.env_var %}
+      <form method="post" action="/keys/{{ provider.id }}" class="flex gap-2 items-center">
+        <input type="password" name="api_key" placeholder="Enter API key..." class="form-input flex-1" autocomplete="off">
+        <button type="submit" class="btn btn-primary btn-sm">Save</button>
+      </form>
+      <div class="provider-actions">
+        <form method="post" action="/keys/{{ provider.id }}/verify" style="display:inline;">
+          <button type="submit" class="btn btn-secondary btn-sm">Verify</button>
+        </form>
+        {% if status.configured %}
+        <form method="post" action="/keys/{{ provider.id }}/delete" style="display:inline;">
+          <button type="submit" class="btn btn-danger btn-sm">Remove</button>
+        </form>
+        {% endif %}
+      </div>
+      {% else %}
+      <!-- Ollama: no key needed -->
+      <div class="text-sm text-secondary mb-2">No API key required. Connects to localhost:11434.</div>
+      <form method="post" action="/keys/{{ provider.id }}/verify" style="display:inline;">
+        <button type="submit" class="btn btn-secondary btn-sm">Test Connection</button>
+      </form>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

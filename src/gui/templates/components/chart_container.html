@@ -1,0 +1,8 @@
+<div class="card">
+  {% if title %}
+  <div class="card-header">{{ title }}</div>
+  {% endif %}
+  <div class="chart-container">
+    <canvas data-chart='{{ chart_config }}'></canvas>
+  </div>
+</div>

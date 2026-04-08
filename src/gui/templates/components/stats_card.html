@@ -1,0 +1,17 @@
+<div class="stats-row" id="stats-cards">
+  {% set levels = [
+    ("full_execution", "critical", "Full Execution"),
+    ("partial_compliance", "warning", "Partial Compliance"),
+    ("instruction_leakage", "caution", "Instruction Leakage"),
+    ("silent_refusal", "safe", "Silent Refusal")
+  ] %}
+  {% for key, cls, label in levels %}
+  {% set count = stats.compliance_counts.get(key, 0) %}
+  {% set pct = (count / stats.total * 100) | round(1) if stats.total > 0 else 0 %}
+  <div class="stat-card {{ cls }}">
+    <div class="stat-value">{{ count }}</div>
+    <div class="stat-label">{{ label }}</div>
+    <div class="stat-sub">{{ pct }}% of {{ stats.total_runs | default(stats.total) }} runs</div>
+  </div>
+  {% endfor %}
+</div>

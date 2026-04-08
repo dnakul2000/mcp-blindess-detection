@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Experiment {{ experiment_id }} — Monitor{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-title">Experiment {{ experiment_id[:12] }}</div>
+  <div class="page-subtitle">
+    {% if experiment %}
+    {{ experiment.config.hypothesis }}/{{ experiment.config.variant }} &mdash;
+    {{ experiment.config.provider }}/{{ experiment.config.model }}
+    {% endif %}
+  </div>
+</div>
+
+<div class="page-body">
+  {% if experiment %}
+  <div class="flex items-center gap-4 mb-4">
+    <span class="badge badge-{{ 'safe' if experiment.status == 'completed' else 'warning' if experiment.status == 'running' else 'critical' if experiment.status == 'failed' else '' }}">
+      {{ experiment.status | upper }}
+    </span>
+    <span class="text-sm text-secondary">
+      {{ experiment.completed_runs }} / {{ experiment.total_runs }} runs
+    </span>
+    <div class="progress-bar flex-1" style="max-width: 300px;">
+      <div class="progress-fill" id="progress-fill"
+           style="width: {{ (experiment.completed_runs / experiment.total_runs * 100) if experiment.total_runs > 0 else 0 }}%"></div>
+    </div>
+  </div>
+
+  <div class="log-output" id="log-output">
+    {% for line in experiment.log_lines %}
+    <div class="log-line">{{ line }}</div>
+    {% endfor %}
+  </div>
+
+  {% if experiment.status == 'completed' %}
+  <div class="mt-4">
+    <a href="/results" class="btn btn-primary">View Results</a>
+  </div>
+  {% endif %}
+
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state-title">Experiment not found</div>
+    <p class="text-muted">This experiment may not have started yet or the ID is incorrect.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/sse-handler.js" defer></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  {% if experiment and experiment.status == 'running' %}
+  startSSE('{{ experiment_id }}');
+  {% endif %}
+});
+</script>
+{% endblock %}

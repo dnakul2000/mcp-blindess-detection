@@ -98,10 +98,12 @@ def test_extract_empty_tools() -> None:
 
 def test_parse_batch_request() -> None:
     """parse_jsonrpc handles a JSON-RPC batch (array) without crashing."""
-    batch = json.dumps([
-        {"jsonrpc": "2.0", "id": 1, "method": "tools/list"},
-        {"jsonrpc": "2.0", "id": 2, "method": "tools/call"},
-    ]).encode()
+    batch = json.dumps(
+        [
+            {"jsonrpc": "2.0", "id": 1, "method": "tools/list"},
+            {"jsonrpc": "2.0", "id": 2, "method": "tools/call"},
+        ]
+    ).encode()
     msg = parse_jsonrpc(batch)
     # Returns first element classified, not a parse error.
     assert msg.parse_error is False
@@ -111,10 +113,12 @@ def test_parse_batch_request() -> None:
 
 def test_parse_batch_returns_all() -> None:
     """parse_jsonrpc_batch splits a batch into individual messages."""
-    batch = json.dumps([
-        {"jsonrpc": "2.0", "id": 1, "method": "tools/list"},
-        {"jsonrpc": "2.0", "id": 2, "method": "tools/call"},
-    ]).encode()
+    batch = json.dumps(
+        [
+            {"jsonrpc": "2.0", "id": 1, "method": "tools/list"},
+            {"jsonrpc": "2.0", "id": 2, "method": "tools/call"},
+        ]
+    ).encode()
     messages = parse_jsonrpc_batch(batch)
     assert len(messages) == 2
     assert messages[0].method == "tools/list"

@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+{% block title %}New Experiment — MCP Detection Blindness{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-title">New Experiment</div>
+  <div class="page-subtitle">Configure and launch a detection blindness experiment</div>
+</div>
+
+<div class="page-body">
+  <form method="post" action="/experiments/launch" id="experiment-form">
+    <div class="experiment-layout">
+      <!-- Left: Configuration Form -->
+      <div>
+        <!-- Hypothesis -->
+        <div class="form-section">
+          <div class="form-section-title">Hypothesis</div>
+          <div class="radio-group" id="hypothesis-group">
+            <label class="radio-option selected" data-value="H3">
+              <input type="radio" name="hypothesis" value="H3" checked>
+              <div>
+                <div class="radio-label">H3 — Response Injection</div>
+                <div class="radio-desc">Adversarial instructions embedded in tool response payloads</div>
+              </div>
+            </label>
+            <label class="radio-option" data-value="H2">
+              <input type="radio" name="hypothesis" value="H2">
+              <div>
+                <div class="radio-label">H2 — Shadow Parameters</div>
+                <div class="radio-desc">Undeclared parameters accepted without logging</div>
+              </div>
+            </label>
+            <label class="radio-option" data-value="control">
+              <input type="radio" name="hypothesis" value="control">
+              <div>
+                <div class="radio-label">Control</div>
+                <div class="radio-desc">Clean baseline with no adversarial content</div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Variant -->
+        <div class="form-section" id="variant-section">
+          <div class="form-section-title">Injection Variant</div>
+          <select name="variant" class="form-input" id="variant-select">
+            {% for v in variants.get("H3", []) %}
+            <option value="{{ v.value }}">{{ v.label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Provider & Model -->
+        <div class="form-section">
+          <div class="form-section-title">Provider & Model</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Provider</label>
+              <select name="provider" class="form-input" id="provider-select">
+                {% for p in providers %}
+                <option value="{{ p.value }}" data-model="{{ p.default_model }}">
+                  {{ p.label }}
+                  {% if key_status.get(p.value, {}).configured %} &#x2713;{% endif %}
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Model</label>
+              <input type="text" name="model" class="form-input" id="model-input" value="llama3.2">
+            </div>
+          </div>
+        </div>
+
+        <!-- Prompt -->
+        <div class="form-section">
+          <div class="form-section-title">Prompt</div>
+          <select name="prompt_file" class="form-input">
+            {% for f in prompt_files %}
+            <option value="{{ f }}">{{ f }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Repetitions -->
+        <div class="form-section">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Repetitions</label>
+              <input type="number" name="repetitions" class="form-input" value="5" min="1" max="50">
+            </div>
+          </div>
+        </div>
+
+        <!-- Advanced -->
+        <div class="form-section">
+          <div class="collapsible-header" onclick="this.classList.toggle('open'); this.nextElementSibling.classList.toggle('open');">
+            <span class="chevron">&#x25B6;</span>
+            <span class="form-section-title" style="margin:0;">Advanced Settings</span>
+          </div>
+          <div class="collapsible-body">
+            <div class="form-row mt-4">
+              <div class="form-group">
+                <label class="form-label">Wall-clock timeout (s)</label>
+                <input type="number" name="max_seconds" class="form-input" value="120">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Query timeout (s)</label>
+                <input type="number" name="query_timeout" class="form-input" value="60">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Tool timeout (s)</label>
+                <input type="number" name="tool_timeout" class="form-input" value="30">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; padding: var(--sp-3);">
+          Launch Experiment
+        </button>
+      </div>
+
+      <!-- Right: Preview -->
+      <div>
+        <div class="card">
+          <div class="card-header">Injection Payload Preview</div>
+          <div class="variant-preview" id="variant-preview">
+            Select a variant to see its payload.
+          </div>
+        </div>
+        <div class="card mt-4">
+          <div class="card-header">What This Tests</div>
+          <div class="text-sm text-secondary" id="hypothesis-description">
+            <strong>H3 — Response Injection:</strong> Tests whether adversarial instructions
+            embedded in MCP tool response payloads can influence LLM behavior without operator
+            visibility. The proxy logs ground-truth traffic while the adversarial server appends
+            injection payloads to legitimate tool responses.
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+  var variants = {{ variant_json | safe }};
+  var hypothesisGroup = document.getElementById('hypothesis-group');
+  var variantSection = document.getElementById('variant-section');
+  var variantSelect = document.getElementById('variant-select');
+  var variantPreview = document.getElementById('variant-preview');
+  var providerSelect = document.getElementById('provider-select');
+  var modelInput = document.getElementById('model-input');
+  var hypothesisDesc = document.getElementById('hypothesis-description');
+
+  var descriptions = {
+    'H3': '<strong>H3 — Response Injection:</strong> Tests whether adversarial instructions embedded in MCP tool response payloads can influence LLM behavior without operator visibility.',
+    'H2': '<strong>H2 — Shadow Parameters:</strong> Tests whether MCP clients accept and forward undeclared parameters that are not in the tool\'s inputSchema, without logging or alerting.',
+    'control': '<strong>Control:</strong> Baseline run with clean tool responses and no adversarial content. Used to establish normal LLM behavior for comparison.'
+  };
+
+  // Hypothesis selection
+  hypothesisGroup.addEventListener('change', function(e) {
+    var value = e.target.value;
+    hypothesisGroup.querySelectorAll('.radio-option').forEach(function(opt) {
+      opt.classList.toggle('selected', opt.dataset.value === value);
+    });
+    variantSection.style.display = (value === 'H3') ? '' : 'none';
+    updateVariants(value);
+    hypothesisDesc.innerHTML = descriptions[value] || '';
+  });
+
+  function updateVariants(hypothesis) {
+    var opts = variants[hypothesis] || [];
+    variantSelect.innerHTML = '';
+    opts.forEach(function(v) {
+      var opt = document.createElement('option');
+      opt.value = v.value;
+      opt.textContent = v.label;
+      variantSelect.appendChild(opt);
+    });
+    updatePreview();
+  }
+
+  variantSelect.addEventListener('change', updatePreview);
+
+  function updatePreview() {
+    var hypothesis = document.querySelector('input[name="hypothesis"]:checked').value;
+    var variant = variantSelect.value;
+    var opts = variants[hypothesis] || [];
+    var match = opts.find(function(v) { return v.value === variant; });
+    variantPreview.textContent = match ? match.payload : 'No payload for this variant.';
+  }
+
+  // Provider -> model default
+  providerSelect.addEventListener('change', function() {
+    var selected = providerSelect.options[providerSelect.selectedIndex];
+    modelInput.value = selected.dataset.model || '';
+  });
+
+  updatePreview();
+})();
+</script>
+{% endblock %}

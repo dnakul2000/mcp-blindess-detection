@@ -2,27 +2,32 @@
 
 ## System Overview
 
-The experimental infrastructure consists of four components connected in a linear pipeline, with a SQLite database as the shared data store.
+The experimental infrastructure consists of five components connected in a pipeline, with SQLite as the shared data store and a web GUI for interactive operation.
 
 ```
-                     +-----------+
-                     |  Operator |
-                     +-----+-----+
-                           |
-                     +-----v-----+
-                     |   Agent   |----> LLM Provider
-                     |   Loop    |<---- (Anthropic/OpenAI/
-                     +-----+-----+       Google/Ollama)
-                           |
-                     +-----v-----+
-                     |   Proxy   |----> SQLite
-                     | (logging) |      (experiment.db)
-                     +-----+-----+
-                           |
-                     +-----v-----+
-                     | Adversarial|
-                     |  Server   |
-                     +-----------+
+  +-------------+
+  |   Web GUI   |----> Configure & launch experiments
+  | (src/gui/)  |<---- Inspect results, analysis, API keys
+  +------+------+
+         |
+  +------v------+
+  |   Operator  |
+  +------+------+
+         |
+  +------v------+
+  |   Agent     |----> LLM Provider
+  |   Loop      |<---- (Anthropic/OpenAI/
+  +------+------+       Google/Ollama)
+         |
+  +------v------+
+  |   Proxy     |----> SQLite
+  | (logging)   |      (experiment.db)
+  +------+------+
+         |
+  +------v------+
+  | Adversarial |
+  |  Server     |
+  +-------------+
 ```
 
 ## Component Details
@@ -96,6 +101,30 @@ Single SQLite file per experiment run (`experiment.db`), schema version 2.
 | `adapter_responses` | Agent | session_id, timestamp, provider, model, response_json, tool_calls_json, compliance_classification, manual_override, iteration_number | What the LLM said |
 | `schema_version` | Logger | version | Schema version tracking |
 
+### 6. Web GUI (`src/gui/`)
+
+**Purpose:** Browser-based research dashboard for experiment management, result inspection, and analysis visualisation.
+
+**Stack:** FastAPI + Jinja2 + HTMX + Chart.js. No Node.js — vendored JS assets for offline use.
+
+**Files:**
+- `app.py` — FastAPI application factory with Jinja2 template rendering.
+- `config.py` — Paths (results dir, prompts dir, key store) and server settings (host, port).
+- `routes/dashboard.py` — Dashboard with aggregate compliance stats, recent experiments, donut chart.
+- `routes/experiments.py` — Experiment configuration form (hypothesis, variant, provider/model, repetitions) and launch endpoint.
+- `routes/results.py` — Results list, run detail with HTMX-loaded tabs (messages, schemas, adapter, events).
+- `routes/analysis.py` — Compliance heatmap, detection rate chart, observability delta visualisation.
+- `routes/keys.py` — API key management (save, verify, remove) with encrypted storage.
+- `routes/sse.py` — Server-Sent Events endpoint for live experiment progress streaming.
+- `services/db_service.py` — Read-only paginated queries against per-run SQLite databases.
+- `services/experiment_service.py` — Async experiment launch wrapping `experiments/runner.py`.
+- `services/analysis_service.py` — Wraps `src/analysis/*` modules for dashboard and chart data.
+- `services/key_service.py` — Fernet-encrypted API key storage in `~/.mcp-blindness/keys.json`.
+- `templates/` — Jinja2 templates: base shell, component partials, page templates.
+- `static/` — CSS design tokens, vendored HTMX + Chart.js, chart initialisation JS, SSE handler.
+
+**Entry point:** `uv run python -m src.gui` → serves at `http://127.0.0.1:8420`.
+
 ## Key Design Decisions
 
 1. **Thin adapter layer over LiteLLM**: Each provider adapter is 100-160 LOC. Full control over schema translation and logging. No hidden retries or normalization.
@@ -103,3 +132,4 @@ Single SQLite file per experiment run (`experiment.db`), schema version 2.
 3. **Failures are data**: No retries, no fallbacks. Timeouts, errors, and null results are recorded and analysed.
 4. **Proxy transparency as precondition**: Validated before every experiment batch. If the proxy modifies traffic, all results are invalid.
 5. **Schema version tracking**: `schema_version` table prevents silent schema mismatches when analysing databases from different code versions.
+6. **GUI as a layer, not a dependency**: The web GUI wraps existing modules (runner, analysis, db schema) without modifying them. All functionality remains accessible via CLI. The GUI adds no changes to core experiment, proxy, or analysis code.

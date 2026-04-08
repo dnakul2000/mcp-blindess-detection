@@ -1,0 +1,10 @@
+{
+  "hypothesis": "H3",
+  "variant": "name_collision",
+  "server_module": "src.servers.name_collision",
+  "provider": "ollama",
+  "model": "qwen3.5:4b",
+  "prompt_file": "experiments/prompts/weather_query.txt",
+  "repetitions": 5,
+  "env_vars": {}
+}

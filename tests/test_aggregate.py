@@ -116,6 +116,7 @@ def test_export_csv(tmp_path: Path) -> None:
     summaries = [
         ExperimentSummary(
             experiment_id="abc123",
+            run_number=1,
             hypothesis="H3",
             variant="direct",
             provider="ollama",
@@ -126,6 +127,7 @@ def test_export_csv(tmp_path: Path) -> None:
         ),
         ExperimentSummary(
             experiment_id="def456",
+            run_number=1,
             hypothesis="H2",
             variant="shadow",
             provider="anthropic",
@@ -169,6 +171,7 @@ def test_export_summary_json(tmp_path: Path) -> None:
     summaries = [
         ExperimentSummary(
             experiment_id="aaa",
+            run_number=1,
             hypothesis="H3",
             variant="direct",
             provider="ollama",
@@ -179,6 +182,7 @@ def test_export_summary_json(tmp_path: Path) -> None:
         ),
         ExperimentSummary(
             experiment_id="bbb",
+            run_number=1,
             hypothesis="H3",
             variant="encoded",
             provider="ollama",
@@ -231,6 +235,17 @@ async def test_aggregate_single_db(tmp_path: Path) -> None:
     db_path = run_dir / "experiment.db"
     await _create_experiment_db(db_path, provider="ollama", model="llama3.2")
 
+    # Write config.json alongside the DB (matches runner behavior).
+    config = {
+        "experiment_id": "exp_001",
+        "hypothesis": "H3",
+        "variant": "direct",
+        "provider": "ollama",
+        "model": "llama3.2",
+        "run_number": 1,
+    }
+    (run_dir / "config.json").write_text(json.dumps(config), encoding="utf-8")
+
     summaries = await aggregate_results(tmp_path)
 
     assert len(summaries) == 1
@@ -238,7 +253,10 @@ async def test_aggregate_single_db(tmp_path: Path) -> None:
     assert isinstance(s, ExperimentSummary)
     assert s.provider == "ollama"
     assert s.model == "llama3.2"
-    assert s.experiment_id == "run_1"
+    assert s.experiment_id == "exp_001"
+    assert s.run_number == 1
+    assert s.hypothesis == "H3"
+    assert s.variant == "direct"
 
 
 async def test_aggregate_multiple_dbs(tmp_path: Path) -> None:

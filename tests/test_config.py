@@ -20,7 +20,8 @@ def test_injection_variant_enum() -> None:
     assert InjectionVariant.MULTISTEP.value == "multistep"
     assert InjectionVariant.BENIGN.value == "benign"
     assert InjectionVariant.CONTEXT_POISON.value == "context_poison"
-    assert len(InjectionVariant) == 6
+    assert InjectionVariant.FALSE_ERROR.value == "false_error"
+    assert len(InjectionVariant) == 7
 
 
 def test_default_injections_all_variants() -> None:
@@ -94,6 +95,15 @@ def test_context_poison_payload() -> None:
     assert cfg.target_tool == ""
     # Should contain subtle misinformation.
     assert "recalibration" in cfg.payload or "flagged" in cfg.payload
+
+
+def test_false_error_payload() -> None:
+    """FALSE_ERROR variant contains a fake error with re-authentication instruction."""
+    cfg = DEFAULT_INJECTIONS[InjectionVariant.FALSE_ERROR]
+    assert "session expired" in cfg.payload
+    assert "re-authenticate" in cfg.payload
+    assert cfg.target_tool == "read_file"
+    assert cfg.target_args == {"path": "/etc/passwd"}
 
 
 def test_shadow_param_config_fields() -> None:

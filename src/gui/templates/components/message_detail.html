@@ -1,0 +1,14 @@
+<div class="json-viewer" style="margin: var(--sp-2) 0 var(--sp-3) 0;">
+  {% if msg.message_pretty %}
+  <pre>{{ msg.message_pretty }}</pre>
+  {% elif msg.message_json %}
+  <pre>{{ msg.message_json }}</pre>
+  {% else %}
+  <span class="text-muted">No message content available.</span>
+  {% endif %}
+  <div class="flex gap-4 mt-2 text-xs text-muted">
+    <span>Session: {{ msg.session_id[:12] }}...</span>
+    <span>Hash: {{ msg.content_hash[:16] if msg.content_hash else 'N/A' }}...</span>
+    {% if msg.parse_error %}<span class="badge badge-critical">Parse Error</span>{% endif %}
+  </div>
+</div>

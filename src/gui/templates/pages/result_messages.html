@@ -1,0 +1,79 @@
+<!-- HTMX partial: proxy message trace -->
+<div class="message-trace">
+  <div class="flex justify-between items-center mb-4">
+    <span class="text-sm text-secondary">{{ total }} messages</span>
+    <div class="flex gap-2">
+      <select onchange="filterMessages(this.value, 'direction')" class="form-input" style="width:auto; font-size:12px; padding:4px 8px;">
+        <option value="">All directions</option>
+        <option value="client_to_server">Client → Server</option>
+        <option value="server_to_client">Server ��� Client</option>
+      </select>
+    </div>
+  </div>
+
+  {% if messages %}
+  <!-- Header -->
+  <div class="message-row" style="border-bottom: 2px solid var(--border-1); cursor:default;">
+    <span class="text-xs text-muted font-medium">TIME</span>
+    <span></span>
+    <span class="text-xs text-muted font-medium">METHOD</span>
+    <span class="text-xs text-muted font-medium">TYPE</span>
+    <span class="text-xs text-muted font-medium">HASH</span>
+  </div>
+
+  {% for msg in messages %}
+  <div class="message-row {% if msg.method and ('inject' in (msg.method|lower) or 'read_file' in (msg.method|lower)) %}has-injection{% endif %}"
+       hx-get="/htmx/results/{{ exp_id }}/run/{{ run_number }}/message/{{ msg.id }}"
+       hx-target="#msg-detail-{{ msg.id }}"
+       hx-swap="innerHTML"
+       onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? '' : 'none'">
+    <span class="message-time">{{ msg.timestamp[11:23] if msg.timestamp|length > 23 else msg.timestamp }}</span>
+    <span class="message-arrow {{ 'outgoing' if msg.direction == 'client_to_server' else 'incoming' }}">
+      {{ '→' if msg.direction == 'client_to_server' else '←' }}
+    </span>
+    <span class="message-method">{{ msg.method or '—' }}</span>
+    <span class="message-type">
+      <span class="badge badge-{{ 'param' if msg.message_type == 'request' else 'schema' if msg.message_type == 'response' else '' }}">
+        {{ msg.message_type or '—' }}
+      </span>
+    </span>
+    <span class="message-hash">{{ msg.content_hash[:12] if msg.content_hash else '—' }}...</span>
+  </div>
+  <div id="msg-detail-{{ msg.id }}" style="display:none;"></div>
+  {% endfor %}
+
+  {% if pages > 1 %}
+  <div class="pagination">
+    {% if page > 1 %}
+    <button class="btn btn-secondary btn-sm"
+            hx-get="/htmx/results/{{ exp_id }}/run/{{ run_number }}/messages?page={{ page - 1 }}"
+            hx-target="#tab-content" hx-swap="innerHTML">
+      &laquo; Prev
+    </button>
+    {% endif %}
+    <span class="pagination-info">Page {{ page }} of {{ pages }}</span>
+    {% if page < pages %}
+    <button class="btn btn-secondary btn-sm"
+            hx-get="/htmx/results/{{ exp_id }}/run/{{ run_number }}/messages?page={{ page + 1 }}"
+            hx-target="#tab-content" hx-swap="innerHTML">
+      Next &raquo;
+    </button>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state-title">No messages recorded</div>
+    <p class="text-muted text-sm">The proxy did not capture any JSON-RPC messages for this run.</p>
+  </div>
+  {% endif %}
+</div>
+
+<script>
+function filterMessages(value, param) {
+  var url = '/htmx/results/{{ exp_id }}/run/{{ run_number }}/messages';
+  if (value) url += '?' + param + '=' + value;
+  htmx.ajax('GET', url, '#tab-content');
+}
+</script>

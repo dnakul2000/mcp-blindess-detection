@@ -1,0 +1,95 @@
+<!-- HTMX partial: detected security events -->
+<div class="flex flex-col gap-6">
+
+  <!-- Schema Mutations -->
+  <div class="card">
+    <div class="flex items-center gap-2 mb-4">
+      <span class="badge badge-schema">Schema Mutations</span>
+      <span class="text-sm text-muted">{{ events.schema_mutations | length }}</span>
+    </div>
+    {% if events.schema_mutations %}
+    {% for e in events.schema_mutations %}
+    <div class="schema-diff mb-3">
+      <div class="schema-old">
+        <div class="text-xs font-medium" style="color: var(--compliance-critical);">{{ e.tool_name }} — Previous</div>
+        <pre class="text-xs mt-1">{{ e.old_description }}</pre>
+        <span class="text-xs text-muted">{{ e.old_hash }}</span>
+      </div>
+      <div class="schema-new">
+        <div class="text-xs font-medium" style="color: var(--compliance-safe);">{{ e.tool_name }} — Current</div>
+        <pre class="text-xs mt-1">{{ e.new_description }}</pre>
+        <span class="text-xs text-muted">{{ e.new_hash }}</span>
+      </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <span class="text-sm text-muted">No schema mutations detected.</span>
+    {% endif %}
+  </div>
+
+  <!-- Undeclared Parameters -->
+  <div class="card">
+    <div class="flex items-center gap-2 mb-4">
+      <span class="badge badge-param">Undeclared Parameters</span>
+      <span class="text-sm text-muted">{{ events.undeclared_params | length }}</span>
+    </div>
+    {% if events.undeclared_params %}
+    {% for e in events.undeclared_params %}
+    <div class="mb-3" style="padding: var(--sp-3); background: var(--event-param-bg); border-radius: var(--radius-md);">
+      <div class="text-sm font-medium">{{ e.tool_name }}</div>
+      <div class="text-xs text-muted mt-1">
+        Declared: <span class="text-mono">{{ e.declared | join(', ') }}</span>
+      </div>
+      <div class="text-xs mt-1" style="color: var(--event-param);">
+        Undeclared: <span class="text-mono font-medium">{{ e.undeclared | join(', ') }}</span>
+      </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <span class="text-sm text-muted">No undeclared parameters detected.</span>
+    {% endif %}
+  </div>
+
+  <!-- Injection Patterns -->
+  <div class="card">
+    <div class="flex items-center gap-2 mb-4">
+      <span class="badge badge-injection">Injection Patterns</span>
+      <span class="text-sm text-muted">{{ events.injection_patterns | length }}</span>
+    </div>
+    {% if events.injection_patterns %}
+    {% for e in events.injection_patterns %}
+    <div class="mb-3" style="padding: var(--sp-3); background: var(--event-injection-bg); border-radius: var(--radius-md);">
+      <div class="text-xs text-muted mb-1">{{ e.timestamp }}</div>
+      <div class="text-sm text-mono" style="white-space: pre-wrap; word-break: break-word;">{{ e.response_text }}</div>
+      <div class="flex gap-2 mt-2">
+        {% for p in e.matched_patterns %}
+        <span class="badge badge-injection">{{ p }}</span>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <span class="text-sm text-muted">No injection patterns detected.</span>
+    {% endif %}
+  </div>
+
+  <!-- Anomalous Calls -->
+  <div class="card">
+    <div class="flex items-center gap-2 mb-4">
+      <span class="badge badge-anomalous">Anomalous Calls</span>
+      <span class="text-sm text-muted">{{ events.anomalous_calls | length }}</span>
+    </div>
+    {% if events.anomalous_calls %}
+    {% for e in events.anomalous_calls %}
+    <div class="mb-3" style="padding: var(--sp-3); background: var(--event-anomalous-bg); border-radius: var(--radius-md);">
+      <div class="text-sm font-medium" style="color: var(--event-anomalous);">{{ e.tool_name }}</div>
+      <div class="text-xs text-muted mt-1">{{ e.timestamp }}</div>
+      <pre class="text-xs text-mono mt-2">{{ e.arguments }}</pre>
+    </div>
+    {% endfor %}
+    {% else %}
+    <span class="text-sm text-muted">No anomalous tool calls detected.</span>
+    {% endif %}
+  </div>
+
+</div>

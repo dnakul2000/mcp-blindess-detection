@@ -1,0 +1,12 @@
+{% macro badge(level) %}
+{% set map = {
+  "full_execution": ("critical", "Full Execution"),
+  "partial_compliance": ("warning", "Partial Compliance"),
+  "instruction_leakage": ("caution", "Instruction Leakage"),
+  "silent_refusal": ("safe", "Silent Refusal"),
+  "no_data": ("", "No Data"),
+  "unknown": ("", "Unknown")
+} %}
+{% set cls, label = map.get(level, ("", level)) %}
+<span class="badge badge-{{ cls }}">{{ label }}</span>
+{% endmacro %}

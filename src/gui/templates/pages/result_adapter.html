@@ -1,0 +1,56 @@
+<!-- HTMX partial: adapter request/response pairs -->
+{% if pairs %}
+<div class="flex flex-col gap-4">
+  {% for pair in pairs %}
+  <div class="card">
+    <div class="flex justify-between items-center mb-4">
+      <div class="card-header" style="margin:0;">
+        Iteration {{ pair.response.iteration_number if pair.response and pair.response.iteration_number else loop.index }}
+      </div>
+      {% if pair.response and pair.response.compliance_classification %}
+      {% set badge_map = {"full_execution": "critical", "partial_compliance": "warning", "instruction_leakage": "caution", "silent_refusal": "safe"} %}
+      <span class="badge badge-{{ badge_map.get(pair.response.compliance_classification, '') }}">
+        {{ pair.response.compliance_classification | replace("_", " ") | title }}
+      </span>
+      {% endif %}
+    </div>
+
+    <div class="two-col" style="grid-template-columns: 1fr 1fr; gap: var(--sp-3);">
+      <!-- Request -->
+      <div>
+        <div class="text-xs font-medium text-muted mb-2">REQUEST → {{ pair.request.provider }} / {{ pair.request.model }}</div>
+        <div class="json-viewer" style="max-height: 300px;">
+          <pre>{{ pair.request.request_json_pretty if pair.request.request_json_pretty else pair.request.request_json or 'No request data' }}</pre>
+        </div>
+      </div>
+
+      <!-- Response -->
+      <div>
+        <div class="text-xs font-medium text-muted mb-2">← RESPONSE</div>
+        {% if pair.response %}
+        <div class="json-viewer" style="max-height: 300px;">
+          <pre>{{ pair.response.response_json_pretty if pair.response.response_json_pretty else pair.response.response_json or 'No response data' }}</pre>
+        </div>
+
+        {% if pair.response.tool_calls_json %}
+        <div class="mt-2">
+          <div class="text-xs font-medium text-muted mb-1">Extracted Tool Calls</div>
+          <div class="json-viewer">
+            <pre>{{ pair.response.tool_calls_json_pretty if pair.response.tool_calls_json_pretty else pair.response.tool_calls_json }}</pre>
+          </div>
+        </div>
+        {% endif %}
+        {% else %}
+        <div class="text-sm text-muted" style="padding: var(--sp-4);">No response recorded.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+  <div class="empty-state-title">No adapter data recorded</div>
+  <p class="text-muted text-sm">No LLM request/response pairs were captured for this run.</p>
+</div>
+{% endif %}

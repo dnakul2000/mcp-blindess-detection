@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv/
+
+# Project
+*.db
+results/raw/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.env
+credentials.json

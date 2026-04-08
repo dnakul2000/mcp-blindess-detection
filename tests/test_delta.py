@@ -211,6 +211,8 @@ async def test_delta_with_events(db_path: Path) -> None:
     # No client log provided => client events = 0 => delta = total_proxy
     assert result.observability_delta == result.total_proxy_events
     assert result.detection_rate == 0.0
+    # All events should be ABSENT (no client log).
+    assert result.events_by_visibility["absent"] == result.total_proxy_events
 
 
 async def test_delta_zero_for_control(db_path: Path) -> None:
@@ -243,6 +245,11 @@ async def test_delta_zero_for_control(db_path: Path) -> None:
     assert result.total_proxy_events == 0
     assert result.observability_delta == 0
     assert result.detection_rate == 0.0
+    assert result.events_by_visibility == {
+        "ui_visible": 0,
+        "log_visible": 0,
+        "absent": 0,
+    }
 
 
 async def test_delta_with_client_log(db_path: Path) -> None:
@@ -262,6 +269,8 @@ async def test_delta_with_client_log(db_path: Path) -> None:
     assert result.total_proxy_events > 0
     assert result.total_client_events == 1  # Only the WARNING line matches.
     assert result.observability_delta == result.total_proxy_events - 1
+    # The "WARNING" keyword makes events UI_VISIBLE (takes precedence over log-visible).
+    assert result.events_by_visibility["ui_visible"] >= 1
 
 
 async def test_detection_rate_calculation(db_path: Path) -> None:

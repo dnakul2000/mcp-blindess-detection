@@ -1,0 +1,10 @@
+{
+  "hypothesis": "combined",
+  "variant": "h2_h3_direct",
+  "server_module": "src.servers.combined",
+  "provider": "ollama",
+  "model": "qwen3.5:4b",
+  "prompt_file": "experiments/prompts/weather_query.txt",
+  "repetitions": 5,
+  "env_vars": {"INJECTION_VARIANT": "direct"}
+}

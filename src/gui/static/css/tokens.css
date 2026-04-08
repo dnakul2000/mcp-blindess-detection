@@ -1,0 +1,78 @@
+/* Design Tokens — Clean Research Dashboard */
+
+@import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&display=swap');
+
+:root {
+  /* Background layers */
+  --bg-0: #f8f8fa;
+  --bg-1: #ffffff;
+  --bg-2: #f1f1f4;
+  --bg-3: #e4e4e7;
+
+  /* Text */
+  --text-0: #18181b;
+  --text-1: #52525b;
+  --text-2: #a1a1aa;
+
+  /* Borders */
+  --border-0: #e4e4e7;
+  --border-1: #d4d4d8;
+
+  /* Compliance scale */
+  --compliance-critical: #dc2626;
+  --compliance-critical-bg: #fef2f2;
+  --compliance-warning: #d97706;
+  --compliance-warning-bg: #fffbeb;
+  --compliance-caution: #ca8a04;
+  --compliance-caution-bg: #fefce8;
+  --compliance-safe: #16a34a;
+  --compliance-safe-bg: #f0fdf4;
+
+  /* Event types */
+  --event-schema: #7c3aed;
+  --event-schema-bg: #f5f3ff;
+  --event-param: #2563eb;
+  --event-param-bg: #eff6ff;
+  --event-injection: #dc2626;
+  --event-injection-bg: #fef2f2;
+  --event-anomalous: #db2777;
+  --event-anomalous-bg: #fdf2f8;
+
+  /* Provider identity */
+  --provider-anthropic: #d97706;
+  --provider-openai: #10b981;
+  --provider-openrouter: #6366f1;
+  --provider-google: #4285f4;
+  --provider-ollama: #64748b;
+
+  /* Accent */
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --accent-bg: #eff6ff;
+
+  /* Typography */
+  --font-sans: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-mono: 'Geist Mono', 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+
+  /* Spacing */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --sp-10: 40px;
+  --sp-12: 48px;
+
+  /* Radius */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md: 0 2px 8px rgba(0,0,0,0.06);
+  --shadow-lg: 0 4px 16px rgba(0,0,0,0.08);
+}

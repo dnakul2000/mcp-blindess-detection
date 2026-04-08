@@ -1,0 +1,7 @@
+<div class="card" style="border-left: 3px solid var(--event-{{ event_type }});">
+  <div class="flex items-center gap-2 mb-2">
+    <span class="badge badge-{{ event_type }}">{{ event_type | replace("_", " ") | title }}</span>
+    <span class="text-xs text-muted">{{ event.timestamp }}</span>
+  </div>
+  <div class="text-sm">{{ event.detail }}</div>
+</div>

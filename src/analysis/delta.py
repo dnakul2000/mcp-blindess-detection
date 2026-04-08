@@ -14,6 +14,9 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 from src.analysis.events import (
+    SecurityEvent,
+    VisibilityTier,
+    classify_visibility,
     detect_anomalous_calls,
     detect_injection_patterns,
     detect_schema_mutations,
@@ -44,6 +47,7 @@ class DeltaResult:
     observability_delta: int
     detection_rate: float
     events_by_type: dict[str, int]
+    events_by_visibility: dict[str, int]
 
 
 def _count_client_events(client_log: list[str]) -> int:
@@ -101,6 +105,18 @@ async def compute_delta(
         "anomalous_call": len(anomalous_events),
     }
 
+    # Classify visibility tiers for all events.
+    all_events: list[SecurityEvent] = [
+        *schema_events,
+        *param_events,
+        *injection_events,
+        *anomalous_events,
+    ]
+    classified = classify_visibility(all_events, client_log or [])
+    visibility_counts: dict[str, int] = {tier.value: 0 for tier in VisibilityTier}
+    for event in classified:
+        visibility_counts[event.visibility.value] += 1
+
     total_proxy = sum(events_by_type.values())
     total_client = _count_client_events(client_log) if client_log else 0
     delta = total_proxy - total_client
@@ -112,4 +128,5 @@ async def compute_delta(
         observability_delta=delta,
         detection_rate=detection_rate,
         events_by_type=events_by_type,
+        events_by_visibility=visibility_counts,
     )

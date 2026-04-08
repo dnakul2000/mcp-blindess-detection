@@ -1,0 +1,14 @@
+<div class="run-card">
+  <div class="run-number">Run {{ run.run_number }}</div>
+  {% if run.compliance %}
+  {% from "components/compliance_badge.html" import badge %}
+  {{ badge(run.compliance) }}
+  {% endif %}
+  <div class="run-duration">{{ run.duration | default('—') }}</div>
+  {% if run.error %}
+  <span class="badge badge-critical">Failed</span>
+  {% endif %}
+  <a href="/results/{{ run.experiment_id }}/run/{{ run.run_number }}" class="btn btn-secondary btn-sm" style="margin-left:auto;">
+    Inspect
+  </a>
+</div>

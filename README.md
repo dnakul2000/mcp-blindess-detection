@@ -64,10 +64,13 @@ Session-level classification detects **escalation** (model refuses initially but
 uv venv && source .venv/bin/activate
 uv sync
 
+# Launch the GUI (opens browser to http://127.0.0.1:8420)
+uv run python -m src.gui
+
 # Run tests (120 tests)
 uv run pytest
 
-# Run a single experiment
+# Run a single experiment (CLI)
 uv run python -m experiments.runner --config experiments/configs/exp_h3_direct.json
 
 # Run the echo server (for testing)
@@ -78,6 +81,19 @@ uv run ruff check .
 uv run mypy --strict src/
 ```
 
+## Web GUI
+
+A browser-based research dashboard for configuring experiments, inspecting results, and visualising analysis. Launch with `uv run python -m src.gui`.
+
+**Pages:**
+- **Dashboard** — Aggregate compliance stats, recent experiments, detection rate overview
+- **Experiments** — Configure and launch runs (hypothesis, variant, provider/model, repetitions)
+- **Results** — Deep-dive into individual runs: JSON-RPC message traces, tool schemas, adapter request/response pairs, detected security events
+- **Analysis** — Compliance heatmap (model x variant), detection rate charts, observability delta visualisation
+- **API Keys** — Manage LLM provider credentials (encrypted local storage)
+
+**Stack:** FastAPI + Jinja2 + HTMX + Chart.js. No Node.js required — pure Python with vendored JS assets.
+
 ## Project Structure
 
 ```
@@ -86,6 +102,11 @@ src/
   servers/        # Adversarial MCP servers (H2, H3, controls)
   client/         # Agent loop + LLM provider adapters
   analysis/       # Event detection, compliance, delta computation
+  gui/            # Web GUI (FastAPI + Jinja2 + HTMX)
+    routes/       # Page and HTMX partial handlers
+    services/     # DB access, analysis, experiment launch, key management
+    templates/    # Jinja2 templates (base, components, pages)
+    static/       # CSS, JS, vendored libraries (HTMX, Chart.js)
 experiments/
   runner.py       # Experiment orchestration
   configs/        # JSON experiment configurations
@@ -106,8 +127,10 @@ docs/             # Research documentation
 
 - Python 3.12+ with async/await
 - MCP SDK (official) with FastMCP
+- FastAPI + Jinja2 + HTMX for the web GUI
 - aiosqlite for async database operations
 - httpx for HTTP requests to LLM providers
+- Chart.js for visualisations
 - pytest + pytest-asyncio (120 tests)
 - ruff + mypy --strict
 

@@ -22,6 +22,7 @@ from src.client.agent import AgentLoop, AgentResult
 from src.client.providers.ollama import OllamaAdapter
 
 if TYPE_CHECKING:
+    from src.analysis.compliance import ComplianceResult
     from src.client.providers.base import LLMProvider
 
 logger = logging.getLogger(__name__)
@@ -138,13 +139,34 @@ def _read_prompt(prompt_file: str) -> str:
     return path.read_text(encoding="utf-8").strip()
 
 
-def _save_agent_result(output_dir: Path, result: AgentResult) -> None:
+def _save_agent_result(
+    output_dir: Path,
+    result: AgentResult,
+    compliance_results: list[ComplianceResult] | None = None,
+) -> None:
     """Save the agent result to a JSON file in the output directory.
 
     Args:
         output_dir: Directory to write the result file into.
         result: The agent result to serialise.
+        compliance_results: Optional compliance classification results
+            from post-run analysis.
     """
+    # Compute worst-case compliance across all sessions.
+    compliance = "no_data"
+    if compliance_results:
+        level_priority = {
+            "full_execution": 0,
+            "partial_compliance": 1,
+            "instruction_leakage": 2,
+            "silent_refusal": 3,
+        }
+        worst = min(
+            compliance_results,
+            key=lambda r: level_priority.get(r.level.value, 99),
+        )
+        compliance = worst.level.value
+
     data: dict[str, Any] = {
         "final_response": result.final_response,
         "iterations": result.iterations,
@@ -152,6 +174,8 @@ def _save_agent_result(output_dir: Path, result: AgentResult) -> None:
             {"tool_name": tc.tool_name, "arguments": tc.arguments} for tc in result.tool_calls_made
         ],
         "operator_log": result.operator_log,
+        "compliance": compliance,
+        "timed_out": result.timed_out,
     }
     output_file = output_dir / "agent_result.json"
     output_file.write_text(json.dumps(data, indent=2), encoding="utf-8")
@@ -242,11 +266,21 @@ async def run_single(
             )
         except TimeoutError:
             agent_result = AgentResult(
-                final_response=f"Run-level timeout reached",
+                final_response="Run-level timeout reached",
                 timed_out=True,
             )
             logger.warning("Run %d timed out at run level", run_number)
-        _save_agent_result(output_dir, agent_result)
+
+        # Run compliance classification on the completed DB.
+        compliance_results_list: list[ComplianceResult] = []
+        try:
+            from src.analysis.compliance import classify_compliance
+
+            compliance_results_list = await classify_compliance(db_path)
+        except Exception:  # noqa: BLE001
+            logger.warning("Compliance classification failed for run %d", run_number)
+
+        _save_agent_result(output_dir, agent_result, compliance_results_list)
 
         duration = time.monotonic() - start_time
         return RunResult(

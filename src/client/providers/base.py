@@ -63,7 +63,7 @@ class LLMProvider(Protocol):
     """
 
     @property
-    def provider_name(self) -> str:
+    def provider_name(self) -> str:  # pragma: no cover
         """Return the canonical name of this provider."""
         ...
 
@@ -83,4 +83,4 @@ class LLMProvider(Protocol):
         Returns:
             Structured response including tool calls and raw JSON logs.
         """
-        ...
+        ...  # pragma: no cover
