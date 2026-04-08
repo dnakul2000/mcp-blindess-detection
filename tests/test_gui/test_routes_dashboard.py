@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from unittest.mock import AsyncMock, patch
 
 if TYPE_CHECKING:
@@ -44,7 +44,7 @@ async def test_stats_partial(client: AsyncClient) -> None:
 def test_build_donut_config_empty() -> None:
     from src.gui.routes.dashboard import _build_donut_config
 
-    config = _build_donut_config({})
+    config: dict[str, Any] = _build_donut_config({})
     assert config["type"] == "doughnut"
     assert all(v == 0 for v in config["data"]["datasets"][0]["data"])
 
@@ -52,7 +52,7 @@ def test_build_donut_config_empty() -> None:
 def test_build_donut_config_with_data() -> None:
     from src.gui.routes.dashboard import _build_donut_config
 
-    config = _build_donut_config({"full_execution": 5, "silent_refusal": 3})
+    config: dict[str, Any] = _build_donut_config({"full_execution": 5, "silent_refusal": 3})
     data = config["data"]["datasets"][0]["data"]
     assert data[0] == 5  # full_execution
     assert data[3] == 3  # silent_refusal

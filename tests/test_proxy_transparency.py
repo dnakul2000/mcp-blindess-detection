@@ -70,7 +70,8 @@ async def _send_jsonrpc(
     proc.stdin.write(line.encode())
     await proc.stdin.drain()
     response_line = await asyncio.wait_for(proc.stdout.readline(), timeout=30.0)
-    return json.loads(response_line)
+    result: dict[str, object] = json.loads(response_line)
+    return result
 
 
 async def _send_notification(

@@ -70,7 +70,8 @@ def test_load_store_empty(tmp_path: Path) -> None:
 
 
 def test_load_store_corrupt(tmp_path: Path) -> None:
-    from src.gui.services.key_service import KEY_STORE_PATH, _load_store
+    from src.gui.config import KEY_STORE_PATH
+    from src.gui.services.key_service import _load_store
 
     KEY_STORE_PATH.write_bytes(b"not-encrypted-data")
     assert _load_store() == {}

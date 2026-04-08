@@ -45,7 +45,7 @@ async def test_log_message(tmp_db: Path) -> None:
 
     async with aiosqlite.connect(str(tmp_db)) as db:
         cursor = await db.execute("SELECT * FROM proxy_messages")
-        rows = await cursor.fetchall()
+        rows = list(await cursor.fetchall())
 
     assert len(rows) == 1
     row = rows[0]
@@ -71,7 +71,7 @@ async def test_log_tool_schema(tmp_db: Path) -> None:
 
     async with aiosqlite.connect(str(tmp_db)) as db:
         cursor = await db.execute("SELECT * FROM proxy_tool_schemas")
-        rows = await cursor.fetchall()
+        rows = list(await cursor.fetchall())
 
     assert len(rows) == 1
     row = rows[0]
@@ -98,7 +98,7 @@ async def test_log_adapter_request(tmp_db: Path) -> None:
 
     async with aiosqlite.connect(str(tmp_db)) as db:
         cursor = await db.execute("SELECT * FROM adapter_requests")
-        rows = await cursor.fetchall()
+        rows = list(await cursor.fetchall())
 
     assert len(rows) == 1
     row = rows[0]
@@ -123,7 +123,7 @@ async def test_log_adapter_response(tmp_db: Path) -> None:
 
     async with aiosqlite.connect(str(tmp_db)) as db:
         cursor = await db.execute("SELECT * FROM adapter_responses")
-        rows = await cursor.fetchall()
+        rows = list(await cursor.fetchall())
 
     assert len(rows) == 1
     row = rows[0]
@@ -153,7 +153,7 @@ async def test_session_id_consistent(tmp_db: Path) -> None:
 
     async with aiosqlite.connect(str(tmp_db)) as db:
         cursor = await db.execute("SELECT session_id FROM proxy_messages")
-        rows = await cursor.fetchall()
+        rows = list(await cursor.fetchall())
 
     assert len(rows) == 2
     assert rows[0][0] == expected_sid
@@ -175,7 +175,7 @@ async def test_timestamp_format(tmp_db: Path) -> None:
 
     async with aiosqlite.connect(str(tmp_db)) as db:
         cursor = await db.execute("SELECT timestamp FROM proxy_messages")
-        rows = await cursor.fetchall()
+        rows = list(await cursor.fetchall())
 
     assert len(rows) == 1
     assert _ISO8601_RE.match(rows[0][0]), f"Timestamp does not match ISO 8601: {rows[0][0]}"

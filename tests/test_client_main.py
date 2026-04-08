@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import argparse
+from typing import Any
 
 import pytest
 
 from src.client.__main__ import _build_provider
 
 
-def _make_args(**kwargs: object) -> argparse.Namespace:
+def _make_args(**kwargs: Any) -> argparse.Namespace:
     defaults = {
         "provider": "ollama",
         "api_key": None,

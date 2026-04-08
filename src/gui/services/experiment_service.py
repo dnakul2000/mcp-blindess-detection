@@ -31,7 +31,7 @@ class ExperimentManager:
 
     def launch(self, config: dict[str, Any]) -> str:
         """Start an experiment in the background."""
-        exp_id = config["experiment_id"]
+        exp_id: str = config["experiment_id"]
         exp = RunningExperiment(
             experiment_id=exp_id,
             config=config,
@@ -72,7 +72,6 @@ class ExperimentManager:
     async def _run(self, exp: RunningExperiment) -> None:
         """Execute the experiment via the existing runner."""
         from experiments.runner import ExperimentConfig, run_single
-
         from src.gui.config import RESULTS_DIR
 
         exp.status = "running"

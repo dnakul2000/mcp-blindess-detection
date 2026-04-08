@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import aiosqlite
@@ -203,6 +204,7 @@ async def test_update_classification(tmp_path: Path) -> None:
         "SELECT compliance_classification FROM adapter_responses WHERE session_id = 's1'"
     ) as cur:
         row = await cur.fetchone()
+        assert row is not None
         assert row[0] == "silent_refusal"
 
 
@@ -666,7 +668,7 @@ def test_anthropic_convert_messages_with_tool_calls() -> None:
     """Line 90: message with tool_calls."""
     from src.client.providers.anthropic import AnthropicAdapter
 
-    messages = [
+    messages: list[dict[str, Any]] = [
         {"role": "user", "content": "hello"},
         {
             "role": "assistant",

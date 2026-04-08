@@ -25,7 +25,7 @@ async def test_adapter_requests_populated(tmp_db: Path) -> None:
 
     async with aiosqlite.connect(str(tmp_db)) as db:
         cursor = await db.execute("SELECT provider, model FROM adapter_requests")
-        rows = await cursor.fetchall()
+        rows = list(await cursor.fetchall())
 
     assert len(rows) == 1
     assert rows[0][0] == "ollama"
@@ -47,7 +47,7 @@ async def test_adapter_responses_populated(tmp_db: Path) -> None:
         cursor = await db.execute(
             "SELECT provider, model, compliance_classification FROM adapter_responses",
         )
-        rows = await cursor.fetchall()
+        rows = list(await cursor.fetchall())
 
     assert len(rows) == 1
     assert rows[0][0] == "openai"
@@ -122,10 +122,10 @@ async def test_session_id_links_records(tmp_db: Path) -> None:
 
     async with aiosqlite.connect(str(tmp_db)) as db:
         cursor = await db.execute("SELECT session_id FROM proxy_messages")
-        proxy_rows = await cursor.fetchall()
+        proxy_rows = list(await cursor.fetchall())
 
         cursor = await db.execute("SELECT session_id FROM adapter_requests")
-        adapter_rows = await cursor.fetchall()
+        adapter_rows = list(await cursor.fetchall())
 
     assert len(proxy_rows) == 1
     assert len(adapter_rows) == 1

@@ -54,7 +54,8 @@ async def send_jsonrpc(
     proc.stdin.write(line.encode())
     await proc.stdin.drain()
     response_line = await asyncio.wait_for(proc.stdout.readline(), timeout=30.0)
-    return json.loads(response_line)
+    result: dict[str, object] = json.loads(response_line)
+    return result
 
 
 async def send_notification(proc: asyncio.subprocess.Process, msg: dict[str, object]) -> None:
@@ -212,7 +213,7 @@ async def test_proxy_logs_tool_schemas(db_path: Path) -> None:
     async with aiosqlite.connect(str(db_path)) as db:
         db.row_factory = aiosqlite.Row
         async with db.execute("SELECT * FROM proxy_tool_schemas") as cursor:
-            rows = await cursor.fetchall()
+            rows = list(await cursor.fetchall())
             assert len(rows) >= 1, "Expected at least one tool schema row"
             tool_names = [row["tool_name"] for row in rows]
             assert "echo" in tool_names

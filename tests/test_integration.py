@@ -112,7 +112,7 @@ async def test_pipeline_shadow_params(tmp_db: Path) -> None:
             "SELECT message_json FROM proxy_messages "
             "WHERE direction = 'client_to_server' AND method = 'tools/call'",
         )
-        rows = await cursor.fetchall()
+        rows = list(await cursor.fetchall())
 
     assert len(rows) >= 1
     # At least one row should contain the shadow parameter.
