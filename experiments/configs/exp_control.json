@@ -1,0 +1,10 @@
+{
+  "hypothesis": "control",
+  "variant": "clean",
+  "server_module": "src.servers.control_clean",
+  "provider": "ollama",
+  "model": "llama3.2",
+  "prompt_file": "experiments/prompts/weather_query.txt",
+  "repetitions": 5,
+  "env_vars": {}
+}

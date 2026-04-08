@@ -1,0 +1,10 @@
+{
+  "hypothesis": "H2",
+  "variant": "isolated",
+  "server_module": "src.servers.shadow_params",
+  "provider": "ollama",
+  "model": "llama3.2",
+  "prompt_file": "experiments/prompts/weather_query.txt",
+  "repetitions": 5,
+  "env_vars": {}
+}
